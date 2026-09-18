@@ -4,10 +4,11 @@ import { getAIProviders } from "../../lib/ai/providers";
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const providerId = String(body.provider ?? "").trim();
+  const jobId = String(body.jobId ?? "").trim();
 
-  if (!providerId) {
+  if (!providerId || !jobId) {
     return NextResponse.json(
-      { ok: false, error: "AI provider is required." },
+      { ok: false, error: "AI provider and jobId are required." },
       { status: 400 }
     );
   }
@@ -38,12 +39,15 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({
-    ok: false,
+    ok: true,
     executed: false,
+    dryRun: true,
     paidRequired: false,
-    status: "ADAPTER_READY",
+    status: "READY_FOR_PROVIDER",
     provider: provider.name,
+    jobId,
+    estimatedCost: 0,
     message:
-      "Provider 연결은 확인됐지만 실제 생성 어댑터는 아직 실행하지 않습니다.",
+      "Provider 연결과 실행 게이트를 통과했습니다. 실제 AI 호출은 아직 실행하지 않았습니다.",
   });
 }
