@@ -181,7 +181,7 @@ export default function Home() {
         const response = await fetch("/api/local-characters", {
           cache: "no-store",
         });
-        const data: MonitorResponse = await response.json();
+        const data: MonitorResponse<LocalCharacter, ContentJob> = await response.json();
         if (data.ok) setCharacters(data.characters ?? []);
       } catch (error) {
         console.error("Character load failed:", error);

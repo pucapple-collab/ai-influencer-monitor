@@ -20,7 +20,7 @@ export type MonitorSummary = {
   aiNotConnectedCount: number;
 };
 
-export type MonitorResponse = {
+export type MonitorResponse<TCharacter = unknown, TContentJob = unknown> = {
   ok: boolean;
   timestamp: string;
   summary: MonitorSummary;
@@ -28,7 +28,7 @@ export type MonitorResponse = {
   latestTask: unknown;
   latestError: unknown;
   services: unknown[];
-  characters: unknown[];
+  characters: TCharacter[];
   tasks: unknown[];
   errors: unknown[];
   runningWorkflows: unknown[];
@@ -37,6 +37,7 @@ export type MonitorResponse = {
     title: string;
     ready: boolean;
   }>;
+  contentJobs: TContentJob[];
   localOperations: {
     influencers: number;
     contentJobs: number;
