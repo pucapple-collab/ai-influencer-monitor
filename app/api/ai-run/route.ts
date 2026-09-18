@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adapters, AIProviderId } from "../../lib/ai/adapters";
 import { canExecuteAI } from "../../lib/ai/providers";
 import { createExecutionRecord } from "../../lib/ai/execution";
+import { canStartGeneration } from "../../lib/ai/pipeline";
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,6 +41,28 @@ export async function POST(request: NextRequest) {
             status: "BLOCKED",
           },
           message: "콘텐츠 승인이 완료되지 않아 AI 실행을 차단했습니다.",
+        },
+        { status: 409 }
+      );
+    }
+
+    const jobStatus = String(body.jobStatus ?? "READY");
+
+    if (!canStartGeneration(approval, jobStatus)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          executed: false,
+          status: "BLOCKED",
+          paidRequired: false,
+          jobId,
+          provider,
+          execution: {
+            ...execution,
+            status: "BLOCKED",
+          },
+          message:
+            "콘텐츠가 승인되지 않았거나 생성 가능한 상태가 아니어서 실행을 차단했습니다.",
         },
         { status: 409 }
       );
