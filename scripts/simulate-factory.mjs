@@ -15,6 +15,11 @@ function assert(value, message) {
 
 const createdIds = [];
 try {
+  const preflight = await request("/api/ai-preflight");
+  assert(preflight.status === 200 && preflight.body.ok, "AI preflight failed");
+  assert(preflight.body.externalCallMade === false, "preflight must not call providers");
+  assert(preflight.body.paidUsageTriggered === false, "preflight must not trigger paid usage");
+
   const unknown = await request("/api/ai-run", {
     method: "POST",
     body: JSON.stringify({ provider: "unknown", jobId: "x", mode: "dry_run" }),

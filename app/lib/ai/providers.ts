@@ -6,44 +6,60 @@ export type AIProvider = {
   role: "video" | "llm";
   status: "CONFIGURED" | "NOT_CONNECTED";
   keyConfigured: boolean;
+  envNames: string[];
+  defaultModel?: string;
 };
 
 const definitions: Array<{
   id: AIProviderId;
   name: string;
   role: AIProvider["role"];
-  env: string;
+  envNames: string[];
+  defaultModel?: string;
 }> = [
   {
     id: "higgsfield",
     name: "Higgsfield",
     role: "video",
-    env: "HIGGSFIELD_API_KEY",
+    envNames: ["HF_CREDENTIALS", "HF_KEY", "HIGGSFIELD_API_KEY"],
   },
   {
     id: "gemini",
     name: "Gemini",
     role: "llm",
-    env: "GEMINI_API_KEY",
+    envNames: ["GEMINI_API_KEY"],
+    defaultModel: "gemini-3.8-flash",
   },
   {
     id: "claude",
     name: "Claude",
     role: "llm",
-    env: "ANTHROPIC_API_KEY",
+    envNames: ["ANTHROPIC_API_KEY"],
+    defaultModel: "claude-opus-5",
   },
 ];
 
+export function getProviderCredential(id: AIProviderId) {
+  const definition = definitions.find((item) => item.id === id);
+  if (!definition) return undefined;
+  for (const name of definition.envNames) {
+    const value = process.env[name];
+    if (value) return value;
+  }
+  return undefined;
+}
+
 export function getAIProviders(): AIProvider[] {
   return definitions.map((item) => {
-    const configured = Boolean(process.env[item.env]);
-
+    const configured = Boolean(getProviderCredential(item.id));
     return {
       id: item.id,
       name: item.name,
       role: item.role,
       status: configured ? "CONFIGURED" : "NOT_CONNECTED",
       keyConfigured: configured,
+      envNames: item.envNames,
+      defaultModel: item.defaultModel,
     };
   });
 }

@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const providerValue = String(body.provider ?? "").trim();
     const jobId = String(body.jobId ?? "").trim();
-    const mode = String(body.mode ?? "real").toLowerCase();
+    const mode = String(body.mode ?? "dry_run").toLowerCase();
 
     if (!providerValue || !jobId)
       return NextResponse.json({ ok: false, executed: false, error: "provider, jobId가 필요합니다." }, { status: 400 });
