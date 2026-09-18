@@ -56,12 +56,45 @@ export async function GET() {
     const actionableTotal =
       completedTasks.length + pendingTasks.length + blockedTasks.length;
 
-    const factoryProgress =
-      actionableTotal > 0
-        ? Math.round((completedTasks.length / actionableTotal) * 100)
-        : completedTasks.length > 0
-          ? 100
-          : 0;
+    const aiProviders = getAIProviders();
+
+    const aiProvidersReady = () =>
+      aiProviders.some((provider) => provider.status === "CONFIGURED");
+
+    const coreSteps = [
+      { id: "project", ready: true, title: "Project" },
+      { id: "next", ready: true, title: "Next.js" },
+      { id: "dashboard", ready: true, title: "Dashboard" },
+      { id: "characters", ready: true, title: "Characters" },
+      { id: "data", ready: true, title: "Data Model" },
+      {
+        id: "database",
+        ready: Boolean(projectStatus && projectStatus.status !== "pending"),
+        title: "Database",
+      },
+      {
+        id: "image-ai",
+        ready: aiProvidersReady(),
+        title: "Image AI",
+      },
+      {
+        id: "video-ai",
+        ready: aiProvidersReady(),
+        title: "Video AI",
+      },
+      {
+        id: "publishing",
+        ready: false,
+        title: "Publishing",
+      },
+    ];
+
+    const factoryProgress = Math.round(
+      (coreSteps.filter((step) => step.ready).length / coreSteps.length) * 100
+    );
+
+    const nextMission =
+      coreSteps.find((step) => !step.ready)?.title ?? "Factory operational";
 
     const activeServices = services.filter((service) =>
       ["ready", "running", "completed", "active"].includes(service.status)
@@ -85,7 +118,7 @@ export async function GET() {
       Array<{ status?: string; approval?: string }>
     >("content-jobs.json", []);
 
-    const aiProviders = getAIProviders();
+
 
     const aiConnectedCount = aiProviders.filter(
       (provider) => provider.status === "CONFIGURED"
@@ -133,6 +166,9 @@ export async function GET() {
         status,
         message,
         factoryProgress,
+        nextMission,
+        coreReadyCount: coreSteps.filter((step) => step.ready).length,
+        coreStepCount: coreSteps.length,
         completedTaskCount: completedTasks.length,
         actionableTaskCount: actionableTotal,
         waitingTaskCount: waitingTasks.length,
@@ -149,6 +185,7 @@ export async function GET() {
 
       },
 
+      coreSteps,
       localOperations,
       ai: {
         providers: aiProviders,
