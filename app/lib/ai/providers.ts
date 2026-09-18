@@ -48,6 +48,10 @@ export function getAIProviders(): AIProvider[] {
   });
 }
 
+export function isAIProviderId(value: string): value is AIProviderId {
+  return definitions.some((provider) => provider.id === value);
+}
+
 export function getAIProvider(id: string) {
   return getAIProviders().find((provider) => provider.id === id);
 }

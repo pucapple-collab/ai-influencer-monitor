@@ -1,7 +1,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { adapters, AIProviderId } from "../../lib/ai/adapters";
-import { canExecuteAI } from "../../lib/ai/providers";
+import {
+  canExecuteAI,
+  isAIProviderId,
+} from "../../lib/ai/providers";
 import { createExecutionRecord } from "../../lib/ai/execution";
 import { canStartGeneration } from "../../lib/ai/pipeline";
 
@@ -9,14 +12,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const provider = String(body.provider ?? "") as AIProviderId;
-    const jobId = String(body.jobId ?? "");
+    const providerValue = String(body.provider ?? "").trim();
+    const jobId = String(body.jobId ?? "").trim();
     const prompt = String(body.prompt ?? "").trim();
     const approval = String(body.approval ?? "").toLowerCase();
-    const execution = createExecutionRecord(jobId, provider);
 
-
-    if (!provider || !jobId || !prompt) {
+    if (!providerValue || !jobId || !prompt) {
       return NextResponse.json(
         {
           ok: false,
@@ -26,6 +27,24 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    if (!isAIProviderId(providerValue)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          executed: false,
+          status: "BLOCKED",
+          paidRequired: false,
+          jobId,
+          provider: providerValue,
+          message: "지원하지 않는 AI Provider입니다.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const provider = providerValue as AIProviderId;
+    const execution = createExecutionRecord(jobId, provider);
 
     if (approval !== "approved") {
       return NextResponse.json(
@@ -78,6 +97,10 @@ export async function POST(request: NextRequest) {
           jobId,
           provider,
           estimatedCost: 0,
+          execution: {
+            ...execution,
+            status: "BLOCKED",
+          },
           message: "Provider 연결이 없어 외부 API를 호출하지 않았습니다.",
         },
         { status: 409 }
@@ -105,7 +128,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ok: result.status === "COMPLETED" || result.status === "READY",
       jobId,
-      paidRequired: result.executed,
+      paidRequired: false,
+      execution: {
+        ...execution,
+        status:
+          result.status === "COMPLETED"
+            ? "COMPLETED"
+            : result.status === "READY"
+              ? "QUEUED"
+              : "ERROR",
+        executed: result.executed,
+        estimatedCost: result.estimatedCost,
+        actualCost: 0,
+        completedAt:
+          result.status === "COMPLETED"
+            ? new Date().toISOString()
+            : undefined,
+        error: result.error,
+      },
       ...result,
     });
   } catch (error) {

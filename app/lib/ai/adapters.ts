@@ -142,9 +142,7 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
 
   higgsfield: {
     async execute() {
-      const credentials =
-        process.env.HF_CREDENTIALS ||
-        process.env.HF_KEY;
+      const credentials = process.env.HIGGSFIELD_API_KEY;
 
       if (!credentials) return missing("higgsfield");
 
@@ -154,7 +152,7 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
         status: "READY",
         estimatedCost: 0,
         error:
-          "Higgsfield credentials detected. Video adapter requires an explicit model selection before billing execution.",
+          "Higgsfield credentials detected. Explicit model selection is required before billing execution.",
       };
     },
   },
