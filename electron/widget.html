@@ -310,6 +310,7 @@
         const summary = data.summary || {};
         const tasks = data.tasks || [];
         const local = data.local || {};
+        const localOperations = data.localOperations || {};
         const localOnly = data.ok === false && summary.status === "LOCAL";
 
         if (data.ok === false && !localOnly) {
@@ -382,6 +383,12 @@
           ["Git Branch", local.gitBranch ?? "-"],
           ["Git", local.gitDirty === true ? "CHANGED" : local.gitDirty === false ? "CLEAN" : "-"],
           ["Processes", local.runtime?.relevantProcesses?.length ?? 0],
+          ["Influencers", localOperations.influencers ?? 0],
+          ["Content Jobs", localOperations.contentJobs ?? 0],
+          ["Approved", localOperations.approvedContent ?? 0],
+          ["Pending Approval", localOperations.pendingApproval ?? 0],
+          ["Generating", localOperations.generating ?? 0],
+          ["Published", localOperations.published ?? 0],
           ["Project", local.projectPath ?? "-"]
         ];
 
