@@ -142,6 +142,8 @@ export async function GET() {
         localInfluencerCount: localOperations.influencers,
         localContentJobCount: localOperations.contentJobs,
         approvedContentCount: localOperations.approvedContent,
+        aiExecutionCost: 0,
+        paidServiceRequired: false,
       },
 
       localOperations,
