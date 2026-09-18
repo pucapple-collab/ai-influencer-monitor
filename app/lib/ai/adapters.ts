@@ -1,5 +1,5 @@
 
-export type AIProviderId = "higgsfield" | "gemini" | "claude";
+import { getProviderCredential } from "./providers";\n\nexport type AIProviderId = "higgsfield" | "gemini" | "claude";
 
 export type AIExecutionInput = {
   prompt: string;
@@ -35,7 +35,7 @@ function missing(
 export const adapters: Record<AIProviderId, AIAdapter> = {
   gemini: {
     async execute(input) {
-      const key = process.env.GEMINI_API_KEY;
+      const key = getProviderCredential("gemini");
 
       if (!key) return missing("gemini");
 
@@ -45,10 +45,10 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
         "gemini-3.8-flash";
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": key },
           body: JSON.stringify({
             contents: [
               {
@@ -84,7 +84,7 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
 
   claude: {
     async execute(input) {
-      const key = process.env.ANTHROPIC_API_KEY;
+      const key = getProviderCredential("claude");
 
       if (!key) return missing("claude");
 
@@ -142,7 +142,7 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
 
   higgsfield: {
     async execute() {
-      const credentials = process.env.HIGGSFIELD_API_KEY;
+      const credentials = getProviderCredential("higgsfield");
 
       if (!credentials) return missing("higgsfield");
 
