@@ -1,45 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import crypto from "crypto";
-
-const file = path.join(process.cwd(), "runtime", "content-jobs.json");
-
-type Job = {
-  id: string;
-  title: string;
-  characterId: string | null;
-  type: string;
-  status: string;
-  createdAt: string;
-  script?: string;
-  prompt?: string;
-  approval?: string;
-};
-
-async function readJobs(): Promise<Job[]> {
-  try { return JSON.parse(await fs.readFile(file, "utf8")); }
-  catch { return []; }
-}
-
-async function writeJobs(data: Job[]) {
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file, JSON.stringify(data, null, 2), { mode: 0o600 });
-}
+import {
+  readContentJobs,
+  writeContentJobs,
+  type LocalContentJob,
+} from "../../lib/local-content-jobs";
 
 export async function GET() {
-  return NextResponse.json({ ok: true, jobs: await readJobs() });
+  return NextResponse.json({ ok: true, jobs: await readContentJobs() });
 }
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
   const title = String(body.title ?? "").trim();
+  if (!title) return NextResponse.json({ ok: false, error: "Title required" }, { status: 400 });
 
-  if (!title)
-    return NextResponse.json({ ok: false, error: "Title required" }, { status: 400 });
-
-  const jobs = await readJobs();
-  const job: Job = {
+  const jobs = await readContentJobs();
+  const job: LocalContentJob = {
     id: crypto.randomUUID(),
     title,
     characterId: body.characterId || null,
@@ -50,38 +27,25 @@ export async function POST(request: NextRequest) {
     approval: "pending",
     createdAt: new Date().toISOString(),
   };
-
   jobs.unshift(job);
-  await writeJobs(jobs);
+  await writeContentJobs(jobs);
   return NextResponse.json({ ok: true, job });
 }
 
 export async function PATCH(request: NextRequest) {
   const body = await request.json();
-  const jobs = await readJobs();
+  const jobs = await readContentJobs();
   const jobId = String(body.id ?? body.jobId ?? "").trim();
   const index = jobs.findIndex((job) => job.id === jobId);
+  if (index < 0) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
-  if (index < 0)
-    return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
-
-  const requestedStatus = String(body.status ?? jobs[index].status);
-  const currentApproval = String(
-    body.approval ?? jobs[index].approval ?? "pending"
-  );
-
-  if (
-    ["generating", "review", "published"].includes(requestedStatus) &&
-    currentApproval !== "approved"
-  ) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "Approval required before generation.",
-      },
-      { status: 409 }
-    );
-  }
+  const requestedStatus = String(body.status ?? jobs[index].status).toLowerCase();
+  const approval = String(body.approval ?? jobs[index].approval ?? "pending").toLowerCase();
+  const allowed = ["draft", "ready", "generating", "review", "published"];
+  if (!allowed.includes(requestedStatus))
+    return NextResponse.json({ ok: false, error: "Invalid status" }, { status: 400 });
+  if (["generating", "review", "published"].includes(requestedStatus) && approval !== "approved")
+    return NextResponse.json({ ok: false, error: "Approval required before generation." }, { status: 409 });
 
   jobs[index] = {
     ...jobs[index],
@@ -89,16 +53,16 @@ export async function PATCH(request: NextRequest) {
     type: String(body.type ?? jobs[index].type),
     script: String(body.script ?? jobs[index].script ?? ""),
     prompt: String(body.prompt ?? jobs[index].prompt ?? ""),
-    approval: currentApproval,
+    approval,
   };
-  await writeJobs(jobs);
+  await writeContentJobs(jobs);
   return NextResponse.json({ ok: true, job: jobs[index] });
 }
 
 export async function DELETE(request: NextRequest) {
   const id = new URL(request.url).searchParams.get("id");
-  const jobs = await readJobs();
-  const next = jobs.filter((job) => job.id !== id);
-  await writeJobs(next);
+  if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
+  const jobs = await readContentJobs();
+  await writeContentJobs(jobs.filter((job) => job.id !== id));
   return NextResponse.json({ ok: true });
 }
