@@ -251,6 +251,17 @@ export default function Home() {
   async function runAIForJob(job: ContentJob) {
     setPipelineError("");
 
+    const provider = aiProviders.find(
+      (item) => item.id === selectedAIProvider
+    );
+
+    if (!provider || provider.status !== "CONFIGURED") {
+      setPipelineError(
+        `${provider?.name ?? selectedAIProvider} 연결이 필요합니다. 외부 API 호출은 실행하지 않았습니다.`
+      );
+      return;
+    }
+
     if (job.approval !== "approved") {
       setPipelineError("승인된 콘텐츠만 AI 생성을 실행할 수 있습니다.");
       return;
