@@ -186,7 +186,7 @@ ipcMain.handle("monitor:get", async () => {
 
     return {
       ...remote,
-      local
+      local,
     };
   } catch (error) {
     return {
