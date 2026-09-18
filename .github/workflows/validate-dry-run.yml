@@ -1,0 +1,40 @@
+name: Validate dry-run pipeline candidate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+      FACTORY_SKIP_MONITOR: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run build
+      - name: Start app
+        run: |
+          npm run dev > /tmp/factory-next.log 2>&1 &
+          echo $! > /tmp/factory-next.pid
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/api/local-content-jobs >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/factory-next.log
+          exit 1
+      - run: npm run simulate:factory
+        env:
+          FACTORY_BASE_URL: http://127.0.0.1:3000
+      - name: Runtime log on failure
+        if: failure()
+        run: cat /tmp/factory-next.log || true
