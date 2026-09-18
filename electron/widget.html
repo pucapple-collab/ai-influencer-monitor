@@ -311,6 +311,7 @@
         const tasks = data.tasks || [];
         const local = data.local || {};
         const localOperations = data.localOperations || {};
+        const ai = data.ai || {};
         const localOnly = data.ok === false && summary.status === "LOCAL";
 
         if (data.ok === false && !localOnly) {
@@ -389,6 +390,8 @@
           ["Pending Approval", localOperations.pendingApproval ?? 0],
           ["Generating", localOperations.generating ?? 0],
           ["Published", localOperations.published ?? 0],
+          ["AI Connected", ai.connectedCount ?? 0],
+          ["AI Waiting", ai.notConnectedCount ?? 0],
           ["Project", local.projectPath ?? "-"]
         ];
 
