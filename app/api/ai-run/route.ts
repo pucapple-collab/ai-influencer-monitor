@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adapters, AIProviderId } from "../../lib/ai/adapters";
 import { canExecuteAI } from "../../lib/ai/providers";
+import { createExecutionRecord } from "../../lib/ai/execution";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,6 +11,9 @@ export async function POST(request: NextRequest) {
     const provider = String(body.provider ?? "") as AIProviderId;
     const jobId = String(body.jobId ?? "");
     const prompt = String(body.prompt ?? "").trim();
+    const approval = String(body.approval ?? "").toLowerCase();
+    const execution = createExecutionRecord(jobId, provider);
+
 
     if (!provider || !jobId || !prompt) {
       return NextResponse.json(
@@ -19,6 +23,25 @@ export async function POST(request: NextRequest) {
           error: "provider, jobId, prompt가 필요합니다.",
         },
         { status: 400 }
+      );
+    }
+
+    if (approval !== "approved") {
+      return NextResponse.json(
+        {
+          ok: false,
+          executed: false,
+          status: "BLOCKED",
+          paidRequired: false,
+          jobId,
+          provider,
+          execution: {
+            ...execution,
+            status: "BLOCKED",
+          },
+          message: "콘텐츠 승인이 완료되지 않아 AI 실행을 차단했습니다.",
+        },
+        { status: 409 }
       );
     }
 
