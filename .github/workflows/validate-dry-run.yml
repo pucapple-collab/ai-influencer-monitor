@@ -1,4 +1,4 @@
-name: Validate dry-run pipeline
+name: Validate dry-run pipeline candidate
 
 on:
   pull_request:
