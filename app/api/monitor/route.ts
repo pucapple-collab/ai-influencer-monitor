@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { PROJECT_STATUS_ID } from "../../lib/project-status";
 import { supabase } from "../../lib/supabase";
 
 export async function GET() {
@@ -42,7 +43,12 @@ export async function GET() {
     if (runsResult.error) throw runsResult.error;
 
     const services = servicesResult.data ?? [];
-    const tasks = tasksResult.data ?? [];
+    const projectStatus = (tasksResult.data ?? []).find(
+      (task) => task.task_id === PROJECT_STATUS_ID
+    ) ?? null;
+    const tasks = (tasksResult.data ?? []).filter(
+      (task) => task.task_id !== PROJECT_STATUS_ID
+    );
     const errors = errorsResult.data ?? [];
     const runs = runsResult.data ?? [];
 
@@ -68,11 +74,12 @@ export async function GET() {
       (task) => task.status === "pending"
     );
 
-    const latestTask =
-      pendingTasks[0] ??
-      blockedTasks[0] ??
-      tasks[0] ??
-      null;
+    const waitingTasks = tasks.filter(
+      (task) => task.status === "waiting"
+    );
+
+    // Only actionable tasks can be NEXT; waiting and finished tasks stay listed.
+    const latestTask = pendingTasks[0] ?? blockedTasks[0] ?? null;
 
     const latestError = errors[0] ?? null;
 
@@ -106,11 +113,13 @@ export async function GET() {
         activeServiceCount: activeServices.length,
         averageProgress,
         pendingTaskCount: pendingTasks.length,
+        waitingTaskCount: waitingTasks.length,
         blockedTaskCount: blockedTasks.length,
         openErrorCount: errors.length,
         runningWorkflowCount: runs.length,
       },
 
+      projectStatus,
       latestTask,
       latestError,
       services,

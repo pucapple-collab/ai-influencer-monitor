@@ -2,14 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
-
-const statusMap: Record<string, string> = {
-  READY: "ready",
-  NEXT: "next",
-  WAITING: "waiting",
-  ONLINE: "online",
-  NOT_CONNECTED: "not-connected",
-};
+import ProjectStatusCard from "./components/project-status";
 
 const setupDescriptions: Record<string, string> = {
   Project: "AI Influencer Factory project",
@@ -195,6 +188,8 @@ export default function Home() {
     <main className="min-h-screen bg-[#09090b] text-white">
       <div className="mx-auto max-w-7xl px-6 py-8 lg:px-10">
 
+        <ProjectStatusCard />
+
         {/* HEADER */}
         <header className="border-b border-white/10 pb-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -235,6 +230,7 @@ export default function Home() {
         <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
           <div className="flex items-center gap-6">
             <div className="w-40 shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/characters/factory-guide.png"
                 alt="Factory Guide"

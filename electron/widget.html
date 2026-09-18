@@ -134,6 +134,10 @@
       left: 10px;
       right: 10px;
       padding: 15px;
+      max-height: 380px;
+      box-sizing: border-box;
+      overflow-y: auto;
+      overflow-x: hidden;
       border-radius: 20px;
       background: rgba(15, 23, 42, 0.98);
       border: 1px solid rgba(255,255,255,.14);
@@ -182,6 +186,8 @@
     }
 
     .close {
+      position: sticky;
+      bottom: 0;
       margin-top: 10px;
       width: 100%;
       padding: 7px;
@@ -297,12 +303,18 @@
 
         const data = await window.monitor.get();
 
-        if (!data || !data.ok) {
-          throw new Error(data?.error || "Monitor API 응답 오류");
+        if (!data) {
+          throw new Error("Monitor 응답이 없습니다.");
         }
 
         const summary = data.summary || {};
         const tasks = data.tasks || [];
+        const local = data.local || {};
+        const localOnly = data.ok === false && summary.status === "LOCAL";
+
+        if (data.ok === false && !localOnly) {
+          throw new Error(data?.error || "Monitor API 응답 오류");
+        }
 
         const status = summary.status || "READY";
         const message =
@@ -363,10 +375,31 @@
           `;
         }).join("");
 
+        const localRows = [
+          ["Next.js", local.nextServer ? "ONLINE" : "OFFLINE"],
+          ["Collector", local.runtime ? "ONLINE" : "WAITING"],
+          ["Electron PID", local.electronPid ?? "-"],
+          ["Git Branch", local.gitBranch ?? "-"],
+          ["Git", local.gitDirty === true ? "CHANGED" : local.gitDirty === false ? "CLEAN" : "-"],
+          ["Processes", local.runtime?.relevantProcesses?.length ?? 0],
+          ["Project", local.projectPath ?? "-"]
+        ];
+
         statusRows.insertAdjacentHTML(
           "beforeend",
-          `<div style="margin-top:10px;text-align:center;font-size:10px;color:#64748b;">
-            Monitor 연결됨 · ${new Date().toLocaleTimeString("ko-KR", {
+          `<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);">
+            ${localRows.map(([label, value]) => `
+              <div class="row">
+                <span>${label}</span>
+                <span class="${value === "OFFLINE" || value === "CHANGED" ? "waiting" : "ready"}"
+                      style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                  ${String(value)}
+                </span>
+              </div>
+            `).join("")}
+          </div>
+          <div style="margin-top:8px;text-align:center;font-size:10px;color:#64748b;">
+            Local Monitor · ${new Date().toLocaleTimeString("ko-KR", {
               hour: "2-digit",
               minute: "2-digit",
               second: "2-digit"
