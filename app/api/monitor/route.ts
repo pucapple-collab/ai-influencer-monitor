@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { PROJECT_STATUS_ID } from "../../lib/project-status";
 import { supabase } from "../../lib/supabase";
+import { getAIProviders } from "../../lib/ai/providers";
 
 async function readRuntimeJson<T>(name: string, fallback: T): Promise<T> {
   try {
@@ -84,6 +85,16 @@ export async function GET() {
       Array<{ status?: string; approval?: string }>
     >("content-jobs.json", []);
 
+    const aiProviders = getAIProviders();
+
+    const aiConnectedCount = aiProviders.filter(
+      (provider) => provider.status === "CONFIGURED"
+    ).length;
+
+    const aiNotConnectedCount = aiProviders.filter(
+      (provider) => provider.status === "NOT_CONNECTED"
+    ).length;
+
     const localOperations = {
       influencers: localCharacters.length,
       contentJobs: localContentJobs.length,
@@ -134,6 +145,12 @@ export async function GET() {
       },
 
       localOperations,
+      ai: {
+        providers: aiProviders,
+        connectedCount: aiConnectedCount,
+        notConnectedCount: aiNotConnectedCount,
+        paidRequired: false,
+      },
       projectStatus,
       latestTask: pendingTasks[0] ?? blockedTasks[0] ?? null,
       services,
