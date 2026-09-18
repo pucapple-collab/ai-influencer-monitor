@@ -168,6 +168,8 @@ export default function Home() {
   const [jobTitle, setJobTitle] = useState("");
   const [jobCharacterId, setJobCharacterId] = useState("");
   const [pipelineError, setPipelineError] = useState("");
+  const [aiRunningJob, setAIRunningJob] = useState<string | null>(null);
+
 
 
 
@@ -241,6 +243,45 @@ export default function Home() {
       setContentJobs((current) =>
         current.filter((job) => job.id !== id)
       );
+    }
+  }
+
+  async function runAIForJob(job: ContentJob) {
+    setPipelineError("");
+
+    if (job.approval !== "approved") {
+      setPipelineError("승인된 콘텐츠만 AI 생성을 실행할 수 있습니다.");
+      return;
+    }
+
+    setAIRunningJob(job.id);
+
+    try {
+      const response = await fetch("/api/ai-run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "higgsfield",
+          jobId: job.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        setPipelineError(
+          data.message || data.error || "AI 실행이 차단되었습니다."
+        );
+        return;
+      }
+
+      await updateContentJob(job.id, { status: "generating" });
+    } catch (error) {
+      setPipelineError(
+        error instanceof Error ? error.message : "AI execution failed."
+      );
+    } finally {
+      setAIRunningJob(null);
     }
   }
 
@@ -1008,6 +1049,19 @@ export default function Home() {
                       >
                         Approve
                       </button>
+
+                      {job.approval === "approved" && (
+                        <button
+                          type="button"
+                          onClick={() => runAIForJob(job)}
+                          disabled={aiRunningJob === job.id}
+                          className="rounded-lg border border-violet-500/20 px-3 py-2 text-xs text-violet-400 disabled:opacity-40"
+                        >
+                          {aiRunningJob === job.id
+                            ? "Checking..."
+                            : "Run AI"}
+                        </button>
+                      )}
 
                       <button
                         type="button"
