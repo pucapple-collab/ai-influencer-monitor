@@ -101,6 +101,14 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+type AIProvider = {
+  id: string;
+  name: string;
+  role: string;
+  status: string;
+  keyConfigured: boolean;
+};
+
 type MonitorSummary = {
   factoryProgress: number;
   completedTaskCount: number;
@@ -164,6 +172,8 @@ export default function Home() {
 
 
   const [monitorSummary, setMonitorSummary] = useState<MonitorSummary | null>(null);
+  const [aiProviders, setAIProviders] = useState<AIProvider[]>([]);
+
   const [operations, setOperations] = useState<MonitorOperations | null>(null);
 
   useEffect(() => {
@@ -310,6 +320,22 @@ export default function Home() {
       setSavingCharacter(false);
     }
   }
+
+  useEffect(() => {
+    async function loadAIStatus() {
+      try {
+        const response = await fetch("/api/ai-status", { cache: "no-store" });
+        const data = await response.json();
+        if (data.ok) setAIProviders(data.providers ?? []);
+      } catch (error) {
+        console.error("AI provider status load failed:", error);
+      }
+    }
+
+    loadAIStatus();
+    const timer = window.setInterval(loadAIStatus, 15000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     async function loadMonitor() {
@@ -726,6 +752,53 @@ export default function Home() {
                 ))
               )}
             </div>
+          </div>
+        </section>
+
+        {/* AI PROVIDER STATUS */}
+        <section className="mt-10">
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-violet-400">
+              AI Providers
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">
+              Connection Status
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              상태만 확인하며 연결되지 않은 서비스에는 API 호출을 하지 않습니다.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {aiProviders.map((provider) => (
+              <div
+                key={provider.id}
+                className="rounded-xl border border-white/10 bg-white/[0.03] p-5"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium">{provider.name}</p>
+                  <span
+                    className={
+                      provider.status === "CONFIGURED"
+                        ? "text-emerald-400"
+                        : "text-zinc-500"
+                    }
+                  >
+                    {provider.status}
+                  </span>
+                </div>
+
+                <p className="mt-3 text-xs uppercase tracking-wider text-zinc-600">
+                  {provider.role}
+                </p>
+
+                <p className="mt-2 text-xs text-zinc-600">
+                  {provider.keyConfigured
+                    ? "API configuration detected"
+                    : "Waiting for connection"}
+                </p>
+              </div>
+            ))}
           </div>
         </section>
 
