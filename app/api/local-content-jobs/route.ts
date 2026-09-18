@@ -64,13 +64,31 @@ export async function PATCH(request: NextRequest) {
   if (index < 0)
     return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
+  const requestedStatus = String(body.status ?? jobs[index].status);
+  const currentApproval = String(
+    body.approval ?? jobs[index].approval ?? "pending"
+  );
+
+  if (
+    ["generating", "review", "published"].includes(requestedStatus) &&
+    currentApproval !== "approved"
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Approval required before generation.",
+      },
+      { status: 409 }
+    );
+  }
+
   jobs[index] = {
     ...jobs[index],
-    status: String(body.status ?? jobs[index].status),
+    status: requestedStatus,
     type: String(body.type ?? jobs[index].type),
     script: String(body.script ?? jobs[index].script ?? ""),
     prompt: String(body.prompt ?? jobs[index].prompt ?? ""),
-    approval: String(body.approval ?? jobs[index].approval ?? "pending"),
+    approval: currentApproval,
   };
   await writeJobs(jobs);
   return NextResponse.json({ ok: true, job: jobs[index] });

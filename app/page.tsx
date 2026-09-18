@@ -159,6 +159,8 @@ export default function Home() {
   const [contentJobs, setContentJobs] = useState<ContentJob[]>([]);
   const [jobTitle, setJobTitle] = useState("");
   const [jobCharacterId, setJobCharacterId] = useState("");
+  const [pipelineError, setPipelineError] = useState("");
+
 
 
   const [monitorSummary, setMonitorSummary] = useState<MonitorSummary | null>(null);
@@ -252,7 +254,34 @@ export default function Home() {
   }
 
   async function updateJobStatus(id: string, status: string) {
-    await updateContentJob(id, { status });
+    setPipelineError("");
+
+    const job = contentJobs.find((item) => item.id === id);
+
+    if (
+      ["generating", "review", "published"].includes(status) &&
+      job?.approval !== "approved"
+    ) {
+      setPipelineError("승인되지 않은 콘텐츠는 생성 단계로 이동할 수 없습니다.");
+      return;
+    }
+
+    const response = await fetch("/api/local-content-jobs", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
+
+    const data = await response.json();
+
+    if (!data.ok) {
+      setPipelineError(data.error ?? "Pipeline update failed.");
+      return;
+    }
+
+    setContentJobs((current) =>
+      current.map((item) => item.id === id ? data.job : item)
+    );
   }
 
   async function createCharacter() {
@@ -698,6 +727,44 @@ export default function Home() {
               )}
             </div>
           </div>
+        </section>
+
+        {/* PRODUCTION CONTROL */}
+        <section className="mt-10">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-xs text-zinc-600">CONTENT JOBS</p>
+              <p className="mt-2 text-3xl font-semibold">{contentJobs.length}</p>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-xs text-zinc-600">APPROVED</p>
+              <p className="mt-2 text-3xl font-semibold text-emerald-400">
+                {contentJobs.filter((job) => job.approval === "approved").length}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-xs text-zinc-600">WAITING APPROVAL</p>
+              <p className="mt-2 text-3xl font-semibold text-amber-400">
+                {contentJobs.filter(
+                  (job) => !job.approval || job.approval === "pending"
+                ).length}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-xs text-zinc-600">GENERATION COST</p>
+              <p className="mt-2 text-3xl font-semibold">$0</p>
+              <p className="mt-1 text-xs text-zinc-600">External AI deferred</p>
+            </div>
+          </div>
+
+          {pipelineError && (
+            <div className="mt-3 rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm text-red-400">
+              {pipelineError}
+            </div>
+          )}
         </section>
 
         {/* CONTENT JOB MANAGER */}
