@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "desktop": "electron electron/main.cjs",
-    "simulate:factory": "node scripts/simulate-factory.mjs"
+    "simulate:factory": "node scripts/simulate-factory.mjs",
+    "check": "npm run lint && npm run build",
+    "verify": "npm run check"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
