@@ -114,6 +114,15 @@ type MonitorOperations = Record<
   { status: string; count: number | null }
 >;
 
+type LocalCharacter = {
+  id: string;
+  name: string;
+  concept: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type Service = {
   service_id: string;
   name: string;
@@ -131,8 +140,56 @@ export default function Home() {
   const [services, setServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [serviceError, setServiceError] = useState("");
+  const [characters, setCharacters] = useState<LocalCharacter[]>([]);
+  const [characterName, setCharacterName] = useState("");
+  const [characterConcept, setCharacterConcept] = useState("");
+  const [savingCharacter, setSavingCharacter] = useState(false);
+
   const [monitorSummary, setMonitorSummary] = useState<MonitorSummary | null>(null);
   const [operations, setOperations] = useState<MonitorOperations | null>(null);
+
+  useEffect(() => {
+    async function loadCharacters() {
+      try {
+        const response = await fetch("/api/local-characters", {
+          cache: "no-store",
+        });
+        const data = await response.json();
+        if (data.ok) setCharacters(data.characters ?? []);
+      } catch (error) {
+        console.error("Character load failed:", error);
+      }
+    }
+
+    loadCharacters();
+  }, []);
+
+  async function createCharacter() {
+    if (!characterName.trim() || savingCharacter) return;
+
+    setSavingCharacter(true);
+
+    try {
+      const response = await fetch("/api/local-characters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: characterName,
+          concept: characterConcept,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.ok) {
+        setCharacters((current) => [data.character, ...current]);
+        setCharacterName("");
+        setCharacterConcept("");
+      }
+    } finally {
+      setSavingCharacter(false);
+    }
+  }
 
   useEffect(() => {
     async function loadMonitor() {
@@ -472,6 +529,77 @@ export default function Home() {
               )}
             </div>
           )}
+        </section>
+
+        {/* AI INFLUENCER MANAGER */}
+        <section className="mt-10">
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-400">
+              AI Influencer Manager
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">
+              Influencers
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              캐릭터 설계 데이터를 로컬에서 안전하게 관리합니다.
+            </p>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-sm font-medium">New Influencer</p>
+
+              <input
+                value={characterName}
+                onChange={(event) => setCharacterName(event.target.value)}
+                placeholder="Name"
+                className="mt-4 w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-fuchsia-400/50"
+              />
+
+              <textarea
+                value={characterConcept}
+                onChange={(event) => setCharacterConcept(event.target.value)}
+                placeholder="Concept / personality / visual direction"
+                rows={5}
+                className="mt-3 w-full resize-none rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-fuchsia-400/50"
+              />
+
+              <button
+                type="button"
+                onClick={createCharacter}
+                disabled={!characterName.trim() || savingCharacter}
+                className="mt-3 w-full rounded-lg bg-fuchsia-500 px-4 py-3 text-sm font-medium text-white disabled:opacity-40"
+              >
+                {savingCharacter ? "Saving..." : "Create Influencer"}
+              </button>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              {characters.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 p-8 text-sm text-zinc-600">
+                  아직 등록된 AI 인플루언서가 없습니다.
+                </div>
+              ) : (
+                characters.map((character) => (
+                  <div
+                    key={character.id}
+                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-medium">{character.name}</h3>
+                      <span className="rounded-full bg-fuchsia-400/10 px-2.5 py-1 text-[10px] uppercase text-fuchsia-400">
+                        {character.status}
+                      </span>
+                    </div>
+
+                    <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-zinc-500">
+                      {character.concept || "No concept yet."}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </section>
 
         {/* FACTORY OPERATIONS */}
