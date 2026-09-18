@@ -28,6 +28,7 @@ export type MonitorResponse = {
   latestTask: unknown;
   latestError: unknown;
   services: unknown[];
+  characters: unknown[];
   tasks: unknown[];
   errors: unknown[];
   runningWorkflows: unknown[];
