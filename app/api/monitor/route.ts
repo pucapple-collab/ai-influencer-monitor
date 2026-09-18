@@ -4,6 +4,7 @@ import path from "path";
 import { PROJECT_STATUS_ID } from "../../lib/project-status";
 import { supabase } from "../../lib/supabase";
 import { getAIProviders } from "../../lib/ai/providers";
+import { getExecutions } from "../../lib/ai/execution-store";
 
 async function readRuntimeJson<T>(name: string, fallback: T): Promise<T> {
   try {
@@ -128,6 +129,32 @@ export async function GET() {
       (provider) => provider.status === "NOT_CONNECTED"
     ).length;
 
+    const executions = await getExecutions();
+
+    const executionSummary = {
+      total: executions.length,
+      completed: executions.filter(
+        (execution) => execution.status === "COMPLETED"
+      ).length,
+      blocked: executions.filter(
+        (execution) => execution.status === "BLOCKED"
+      ).length,
+      errors: executions.filter(
+        (execution) => execution.status === "ERROR"
+      ).length,
+      queued: executions.filter(
+        (execution) => execution.status === "QUEUED"
+      ).length,
+      estimatedCost: executions.reduce(
+        (sum, execution) => sum + (execution.estimatedCost || 0),
+        0
+      ),
+      actualCost: executions.reduce(
+        (sum, execution) => sum + (execution.actualCost || 0),
+        0
+      ),
+    };
+
     const localOperations = {
       influencers: localCharacters.length,
       contentJobs: localContentJobs.length,
@@ -181,10 +208,17 @@ export async function GET() {
         localInfluencerCount: localOperations.influencers,
         localContentJobCount: localOperations.contentJobs,
         approvedContentCount: localOperations.approvedContent,
-        aiExecutionCost: 0,
+        aiExecutionCost: executionSummary.actualCost,
         paidServiceRequired: false,
         aiConnectedCount,
         aiNotConnectedCount,
+        aiExecutionCount: executionSummary.total,
+        aiCompletedCount: executionSummary.completed,
+        aiBlockedCount: executionSummary.blocked,
+        aiErrorCount: executionSummary.errors,
+        aiQueuedCount: executionSummary.queued,
+        aiEstimatedCost: executionSummary.estimatedCost,
+        aiActualCost: executionSummary.actualCost,
 
       },
 
@@ -195,6 +229,7 @@ export async function GET() {
         connectedCount: aiConnectedCount,
         notConnectedCount: aiNotConnectedCount,
         paidRequired: false,
+        executions: executionSummary,
       },
       projectStatus,
       latestTask: pendingTasks[0] ?? blockedTasks[0] ?? null,
