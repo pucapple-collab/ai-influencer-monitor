@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const body = await request.json();
   const jobs = await readJobs();
-  const index = jobs.findIndex((job) => job.id === body.id);
+  const jobId = String(body.id ?? body.jobId ?? "").trim();
+  const index = jobs.findIndex((job) => job.id === jobId);
 
   if (index < 0)
     return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
