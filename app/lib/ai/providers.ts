@@ -52,3 +52,12 @@ export function getAIProviders(): AIProvider[] {
     },
   ];
 }
+
+
+export function canExecuteAI(providerId: string): boolean {
+  return getAIProviders().some(
+    (provider) =>
+      provider.id === providerId &&
+      provider.status === "CONFIGURED"
+  );
+}
