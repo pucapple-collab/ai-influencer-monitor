@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .widget {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drag-area {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 90px;
+      -webkit-app-region: drag;
+      cursor: move;
+      z-index: 1;
+    }
+
+    .bubble {
+      position: absolute;
+      top: 8px;
+      left: 12px;
+      right: 12px;
+      padding: 12px 15px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: white;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+      font-size: 12px;
+      line-height: 1.45;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      z-index: 3;
+      -webkit-app-region: no-drag;
+    }
+
+    .status {
+      color: #34d399;
+      font-weight: 800;
+      font-size: 11px;
+      letter-spacing: .08em;
+      margin-bottom: 5px;
+    }
+
+    .message {
+      color: #e2e8f0;
+    }
+
+    .detail {
+      margin-top: 5px;
+      color: #94a3b8;
+      font-size: 11px;
+    }
+
+    .copy-button {
+      margin-top: 9px;
+      padding: 6px 10px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 9px;
+      background: rgba(255,255,255,.07);
+      color: #cbd5e1;
+      font-size: 10px;
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+    }
+
+    .copy-button:hover {
+      background: rgba(255,255,255,.12);
+    }
+
+    @keyframes factoryGuideIdle {
+      0%, 100% {
+        transform: translateX(-50%) translateY(0);
+      }
+      50% {
+        transform: translateX(-50%) translateY(-5px);
+      }
+    }
+
+    .character-stage {
+      animation: factoryGuideIdle 3.2s ease-in-out infinite;
+      transform-origin: center bottom;
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 330px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .character {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 270px;
+      z-index: 2;
+      -webkit-app-region: no-drag;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-user-drag: none;
+      user-drag: none;
+      pointer-events: auto;
+      cursor: pointer;
+      filter: drop-shadow(0 12px 20px rgba(0,0,0,.35));
+      transform-origin: center bottom;
+    }
+
+    .panel {
+      display: none;
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      right: 10px;
+      padding: 15px;
+      border-radius: 20px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(255,255,255,.14);
+      color: white;
+      box-shadow: 0 15px 40px rgba(0,0,0,.35);
+      z-index: 10;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+      -webkit-app-region: no-drag;
+    }
+
+    .panel.open {
+      display: block;
+    }
+
+    .widget.panel-open .bubble {
+      display: none;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      font-size: 11px;
+    }
+
+    .ready {
+      color: #34d399;
+      font-weight: 700;
+    }
+
+    .next {
+      color: #60a5fa;
+      font-weight: 700;
+    }
+
+    .waiting {
+      color: #94a3b8;
+      font-weight: 700;
+    }
+
+    .close {
+      margin-top: 10px;
+      width: 100%;
+      padding: 7px;
+      border: 0;
+      border-radius: 10px;
+      background: rgba(255,255,255,.08);
+      color: #cbd5e1;
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="widget" id="widget">
+
+    <div class="drag-area"></div>
+
+    <div class="bubble" id="bubble">
+      <div class="status" id="bubbleStatus">SYSTEM READY</div>
+      <div class="message" id="bubbleMessage">
+        시스템 상태를 확인하는 중...
+      </div>
+      <div class="detail" id="bubbleDetail"></div>
+      <button class="copy-button" id="copyButton" type="button">
+        내용 복사
+      </button>
+    </div>
+
+    <div class="panel" id="panel">
+      <div class="panel-title">Factory Guide</div>
+      <div id="statusRows">
+        <div class="row">
+          <span>System</span>
+          <span class="ready">LOADING</span>
+        </div>
+      </div>
+      <button class="close" id="closeButton" type="button">
+        닫기
+      </button>
+    </div>
+
+    <div class="character-stage" id="characterStage">
+      <img
+        id="character"
+        class="character"
+        alt="Factory Guide"
+        draggable="false"
+      >
+    </div>
+
+  </div>
+
+  <script>
+    const character = document.getElementById("character");
+    const panel = document.getElementById("panel");
+    const bubble = document.getElementById("bubble");
+    const bubbleStatus = document.getElementById("bubbleStatus");
+    const bubbleMessage = document.getElementById("bubbleMessage");
+    const bubbleDetail = document.getElementById("bubbleDetail");
+    const copyButton = document.getElementById("copyButton");
+    const statusRows = document.getElementById("statusRows");
+    const closeButton = document.getElementById("closeButton");
+
+    let latestReport = "";
+
+    function setBubble(status, message, detail, isError = false) {
+      bubbleStatus.textContent = status;
+      bubbleMessage.textContent = message;
+      bubbleDetail.textContent = detail || "";
+
+      if (isError) {
+        bubbleStatus.style.color = "#f87171";
+      } else {
+        bubbleStatus.style.color = "#34d399";
+      }
+
+      latestReport =
+        "[AI Influencer Factory Monitor]\\n" +
+        "상태: " + status + "\\n" +
+        "메시지: " + message + "\\n" +
+        (detail ? "상세: " + detail + "\\n" : "") +
+        "확인 시각: " + new Date().toLocaleString("ko-KR");
+    }
+
+    async function copyReport() {
+      try {
+        await navigator.clipboard.writeText(latestReport);
+        const original = copyButton.textContent;
+        copyButton.textContent = "복사 완료";
+        setTimeout(() => {
+          copyButton.textContent = original;
+        }, 1200);
+      } catch (error) {
+        console.error("Copy failed:", error);
+        copyButton.textContent = "복사 실패";
+      }
+    }
+
+    copyButton.addEventListener("click", copyReport);
+
+    async function loadSystemStatus() {
+      try {
+        const response = await fetch(
+          "file:///Users/juhyun/AI-Influencer-Factory/monitor-app/app/data/system-status.json"
+        );
+
+        if (!response.ok) {
+          throw new Error("system-status.json을 읽을 수 없습니다.");
+        }
+
+        const data = await response.json();
+
+        const steps = data.setupSteps || [];
+        const ready = steps.filter(step => step.status === "READY").length;
+        const next = steps.find(step => step.status === "NEXT");
+
+        setBubble(
+          "SYSTEM READY",
+          "현재 기본 시스템이 정상적으로 작동하고 있어요.",
+          "구축 완료 " + ready + "/" + steps.length +
+          (next ? " · 다음: " + next.name : "")
+        );
+
+        statusRows.innerHTML = steps.map(step => {
+          let className = "waiting";
+
+          if (step.status === "READY") {
+            className = "ready";
+          } else if (step.status === "NEXT") {
+            className = "next";
+          }
+
+          return `
+            <div class="row">
+              <span>${step.name}</span>
+              <span class="${className}">${step.status}</span>
+            </div>
+          `;
+        }).join("");
+
+        if (data.updatedAt) {
+          const updated = new Date(data.updatedAt);
+          statusRows.insertAdjacentHTML(
+            "beforeend",
+            `<div style="margin-top:10px;text-align:center;font-size:10px;color:#64748b;">
+              마지막 업데이트 ${updated.toLocaleTimeString("ko-KR", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+              })}
+            </div>`
+          );
+        }
+
+      } catch (error) {
+        console.error("System status load failed:", error);
+
+        const message = error instanceof Error
+          ? error.message
+          : String(error);
+
+        setBubble(
+          "SYSTEM ERROR",
+          "시스템 상태를 읽지 못했습니다.",
+          message,
+          true
+        );
+      }
+    }
+
+    async function loadCharacterConfig() {
+      try {
+        const response = await fetch(
+          "file:///Users/juhyun/AI-Influencer-Factory/monitor-app/electron/character-config.json"
+        );
+
+        const config = await response.json();
+
+        const rendererType = config.renderer?.type || "image";
+
+        if (rendererType === "image") {
+          character.src = config.image;
+        }
+
+        character.alt = config.name || "Factory Guide";
+
+        if (config.width) {
+          character.style.width = config.width + "px";
+        }
+
+        if (config.animation && config.animation.idleDuration) {
+          document.getElementById("characterStage").style.animationDuration =
+            config.animation.idleDuration + "s";
+        }
+
+        console.log("Character loaded:", config.name);
+
+      } catch (error) {
+        console.error("Character config load failed:", error);
+      }
+    }
+
+    character.addEventListener("dragstart", function(event) {
+      event.preventDefault();
+    });
+
+    character.addEventListener("mousedown", function(event) {
+      event.preventDefault();
+
+      if (event.button === 0) {
+        const isOpen = panel.classList.toggle("open");
+        bubble.style.display = isOpen ? "none" : "block";
+      }
+    });
+
+    closeButton.addEventListener("click", function() {
+      panel.classList.remove("open");
+      bubble.style.display = "block";
+    });
+
+    loadSystemStatus();
+    loadCharacterConfig();
+
+    setInterval(loadSystemStatus, 10000);
+  </script>
+</body>
+</html>

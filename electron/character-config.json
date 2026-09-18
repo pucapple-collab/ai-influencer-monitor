@@ -1,0 +1,18 @@
+{
+  "id": "factory-guide",
+  "name": "Factory Guide",
+  "image": "file:///Users/juhyun/AI-Influencer-Factory/monitor-app/public/characters/factory-guide.png",
+  "width": 270,
+  "position": {
+    "bottom": 0,
+    "center": true
+  },
+  "animation": {
+    "idle": true,
+    "idleDuration": 3.2
+  },
+  "renderer": {
+    "type": "image",
+    "version": 1
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "project": {
+    "name": "AI Influencer Factory",
+    "status": "READY"
+  },
+  "setupSteps": [
+    {
+      "name": "Project",
+      "status": "READY"
+    },
+    {
+      "name": "Next.js",
+      "status": "READY"
+    },
+    {
+      "name": "Dashboard",
+      "status": "READY"
+    },
+    {
+      "name": "Characters",
+      "status": "READY"
+    },
+    {
+      "name": "Data Model",
+      "status": "READY"
+    },
+    {
+      "name": "Database",
+      "status": "NEXT"
+    },
+    {
+      "name": "Image AI",
+      "status": "WAITING"
+    },
+    {
+      "name": "Video AI",
+      "status": "WAITING"
+    },
+    {
+      "name": "Publishing",
+      "status": "WAITING"
+    }
+  ],
+  "systemLayers": [
+    {
+      "name": "Control Center",
+      "status": "ONLINE"
+    },
+    {
+      "name": "AI Influencers",
+      "status": "ONLINE"
+    },
+    {
+      "name": "Content Pipeline",
+      "status": "ONLINE"
+    },
+    {
+      "name": "AI Generation",
+      "status": "NOT_CONNECTED"
+    },
+    {
+      "name": "Automation",
+      "status": "NOT_CONNECTED"
+    }
+  ],
+  "nextTasks": [
+    "Connect persistent database",
+    "Create influencer management screen",
+    "Create content management screen",
+    "Connect image generation",
+    "Connect video generation"
+  ],
+  "cost": {
+    "current": 0,
+    "currency": "USD",
+    "paidServiceRequired": false
+  },
+  "updatedAt": "2026-09-17T19:46:48.377482+09:00"
+}

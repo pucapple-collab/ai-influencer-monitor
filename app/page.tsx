@@ -1,0 +1,561 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "./lib/supabase";
+
+const statusMap: Record<string, string> = {
+  READY: "ready",
+  NEXT: "next",
+  WAITING: "waiting",
+  ONLINE: "online",
+  NOT_CONNECTED: "not-connected",
+};
+
+const setupDescriptions: Record<string, string> = {
+  Project: "AI Influencer Factory project",
+  "Next.js": "Monitoring application",
+  Dashboard: "System monitoring interface",
+  Characters: "Factory Guide and AI characters",
+  "Data Model": "Influencers, jobs and content",
+  Database: "Persistent data storage",
+  "Image AI": "AI image generation",
+  "Video AI": "AI video generation",
+  Publishing: "Automated content publishing",
+};
+
+const setupSteps = [
+  { name: "Project", description: setupDescriptions["Project"], status: "ready" },
+  { name: "Next.js", description: setupDescriptions["Next.js"], status: "ready" },
+  { name: "Dashboard", description: setupDescriptions["Dashboard"], status: "ready" },
+  { name: "Characters", description: setupDescriptions["Characters"], status: "ready" },
+  { name: "Data Model", description: setupDescriptions["Data Model"], status: "ready" },
+  { name: "Database", description: setupDescriptions["Database"], status: "ready" },
+  { name: "Image AI", description: setupDescriptions["Image AI"], status: "waiting" },
+  { name: "Video AI", description: setupDescriptions["Video AI"], status: "waiting" },
+  { name: "Publishing", description: setupDescriptions["Publishing"], status: "waiting" },
+];
+
+const systemLayers = [
+  {
+    number: "01",
+    name: "Control Center",
+    description: "Monitor the entire factory",
+    status: "online",
+  },
+  {
+    number: "02",
+    name: "AI Influencers",
+    description: "Manage virtual creators",
+    status: "online",
+  },
+  {
+    number: "03",
+    name: "Content Pipeline",
+    description: "Idea → Script → Image → Video",
+    status: "online",
+  },
+  {
+    number: "04",
+    name: "AI Generation",
+    description: "External AI services",
+    status: "not-connected",
+  },
+  {
+    number: "05",
+    name: "Automation",
+    description: "Scheduled generation and publishing",
+    status: "not-connected",
+  },
+];
+
+const nextTasks = [
+  "Connect persistent database",
+  "Create influencer management screen",
+  "Create content management screen",
+  "Connect image generation",
+  "Connect video generation",
+];
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === "ready" || status === "online") {
+    return (
+      <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-400">
+        READY
+      </span>
+    );
+  }
+
+  if (status === "next") {
+    return (
+      <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs text-blue-400">
+        NEXT
+      </span>
+    );
+  }
+
+  if (status === "not-connected") {
+    return (
+      <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs text-amber-400">
+        NOT CONNECTED
+      </span>
+    );
+  }
+
+  return (
+    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-500">
+      WAITING
+    </span>
+  );
+}
+
+type Service = {
+  service_id: string;
+  name: string;
+  role: string | null;
+  status: string;
+  progress: number;
+  current_job: string | null;
+  next_action: string | null;
+  usage_today: number;
+  usage_month: number;
+  quota: number | null;
+};
+
+export default function Home() {
+  const [services, setServices] = useState<Service[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [serviceError, setServiceError] = useState("");
+
+  useEffect(() => {
+    async function loadServices() {
+      const { data, error } = await supabase
+        .from("services")
+        .select(
+          "service_id,name,role,status,progress,current_job,next_action,usage_today,usage_month,quota"
+        )
+        .order("service_id");
+
+      if (error) {
+        console.error("Supabase services load failed:", error);
+        setServiceError(error.message);
+      } else {
+        setServices(data ?? []);
+      }
+
+      setLoadingServices(false);
+    }
+
+    loadServices();
+
+    const channel = supabase
+      .channel("monitor-services")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "services",
+        },
+        () => {
+          loadServices();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+  const liveReadyCount = services.filter(
+    (service) =>
+      service.status === "ready" ||
+      service.status === "running" ||
+      service.status === "completed"
+  ).length;
+
+  const liveProgress =
+    services.length > 0
+      ? Math.round(
+          services.reduce(
+            (total, service) => total + (service.progress || 0),
+            0
+          ) / services.length
+        )
+      : 0;
+
+  const readyCount = setupSteps.filter(
+    (step) => step.status === "ready"
+  ).length;
+
+  const setupProgress = Math.round(
+    (readyCount / setupSteps.length) * 100
+  );
+
+  return (
+    <main className="min-h-screen bg-[#09090b] text-white">
+      <div className="mx-auto max-w-7xl px-6 py-8 lg:px-10">
+
+        {/* HEADER */}
+        <header className="border-b border-white/10 pb-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="mb-3 flex items-center gap-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                <span className="text-xs font-medium uppercase tracking-[0.25em] text-emerald-400">
+                  Factory Control Center
+                </span>
+              </div>
+
+              <h1 className="text-4xl font-semibold tracking-tight">
+                AI Influencer Factory
+              </h1>
+
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-500">
+                현재 AI Influencer Factory 시스템의 구축 상태와
+                다음 작업을 한눈에 확인하는 모니터링 센터입니다.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-5 py-4">
+              <p className="text-xs uppercase tracking-wider text-zinc-500">
+                System Status
+              </p>
+
+              <div className="mt-2 flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                <span className="font-medium text-emerald-400">
+                  ONLINE
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* PROGRESS */}
+        <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+          <div className="flex items-center gap-6">
+            <div className="w-40 shrink-0">
+              <img
+                src="/characters/factory-guide.png"
+                alt="Factory Guide"
+                className="w-full drop-shadow-2xl"
+              />
+            </div>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                Factory Guide
+              </div>
+              <h2 className="mt-2 text-2xl font-bold text-white">
+                시스템 구축 상황을 안내하고 있어요
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                현재 기본 대시보드는 READY 상태입니다.
+                다음 단계는 데이터베이스 연결입니다.
+              </p>
+              <div className="mt-4 flex gap-2">
+                <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs text-emerald-400">
+                  SYSTEM READY
+                </span>
+                <span className="rounded-full bg-blue-400/10 px-3 py-1 text-xs text-blue-400">
+                  NEXT: DATABASE
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-600">
+                Factory Setup
+              </p>
+
+              <h2 className="mt-2 text-2xl font-semibold">
+                System Construction Progress
+              </h2>
+
+              <p className="mt-2 text-sm text-zinc-500">
+                현재까지 구축된 시스템의 진행 상황입니다.
+              </p>
+            </div>
+
+            <div className="md:text-right">
+              <p className="text-4xl font-semibold">
+                {setupProgress}%
+              </p>
+
+              <p className="mt-1 text-xs text-zinc-600">
+                {readyCount} / {setupSteps.length} systems ready
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 h-2 overflow-hidden rounded-full bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-emerald-400 transition-all"
+              style={{ width: `${setupProgress}%` }}
+            />
+          </div>
+        </section>
+
+        {/* SETUP STEPS */}
+        <section className="mt-8">
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-600">
+              Setup Monitor
+            </p>
+
+            <h2 className="mt-2 text-2xl font-semibold">
+              System Setup Status
+            </h2>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {setupSteps.map((step, index) => (
+              <div
+                key={step.name}
+                className="rounded-xl border border-white/10 bg-white/[0.03] p-5"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex gap-4">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5 font-mono text-xs text-zinc-500">
+                      {String(index + 1).padStart(2, "0")}
+                    </div>
+
+                    <div>
+                      <h3 className="font-medium">
+                        {step.name}
+                      </h3>
+
+                      <p className="mt-1 text-sm text-zinc-600">
+                        {step.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <StatusBadge status={step.status} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* LIVE SERVICES */}
+        <section className="mt-10">
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+              Supabase Live Data
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">
+              Connected Services
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              실제 Supabase services 테이블에서 현재 상태를 읽고 있습니다.
+            </p>
+          </div>
+
+          <div className="mb-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-xs text-zinc-600">REGISTERED SERVICES</p>
+              <p className="mt-2 text-3xl font-semibold">
+                {loadingServices ? "..." : services.length}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-xs text-zinc-600">READY / RUNNING</p>
+              <p className="mt-2 text-3xl font-semibold text-emerald-400">
+                {loadingServices ? "..." : liveReadyCount}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+              <p className="text-xs text-zinc-600">AVERAGE PROGRESS</p>
+              <p className="mt-2 text-3xl font-semibold">
+                {loadingServices ? "..." : `${liveProgress}%`}
+              </p>
+            </div>
+          </div>
+
+          {serviceError ? (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5 text-sm text-red-400">
+              Supabase 연결 오류: {serviceError}
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {loadingServices ? (
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 text-sm text-zinc-500">
+                  Supabase 데이터를 불러오는 중...
+                </div>
+              ) : (
+                services.map((service) => (
+                  <div
+                    key={service.service_id}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] p-5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-medium">{service.name}</h3>
+                        <p className="mt-1 text-xs text-zinc-600">
+                          {service.role || service.service_id}
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase text-zinc-400">
+                        {service.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-5">
+                      <div className="flex justify-between text-xs text-zinc-500">
+                        <span>Progress</span>
+                        <span>{service.progress || 0}%</span>
+                      </div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                        <div
+                          className="h-full rounded-full bg-emerald-400"
+                          style={{ width: `${Math.max(0, Math.min(100, service.progress || 0))}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {service.current_job && (
+                      <p className="mt-4 text-xs text-zinc-500">
+                        Job: {service.current_job}
+                      </p>
+                    )}
+
+                    {service.next_action && (
+                      <p className="mt-2 text-xs text-blue-400">
+                        Next: {service.next_action}
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* ARCHITECTURE */}
+        <section className="mt-10">
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-600">
+              Factory Architecture
+            </p>
+
+            <h2 className="mt-2 text-2xl font-semibold">
+              System Layers
+            </h2>
+          </div>
+
+          <div className="grid gap-3">
+            {systemLayers.map((layer, index) => (
+              <div key={layer.number}>
+                <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-white/[0.03] p-5 md:flex-row md:items-center">
+                  <div className="font-mono text-sm text-zinc-700">
+                    {layer.number}
+                  </div>
+
+                  <div className="flex-1">
+                    <h3 className="font-medium">
+                      {layer.name}
+                    </h3>
+
+                    <p className="mt-1 text-sm text-zinc-600">
+                      {layer.description}
+                    </p>
+                  </div>
+
+                  <StatusBadge status={layer.status} />
+                </div>
+
+                {index < systemLayers.length - 1 && (
+                  <div className="py-1 text-center text-zinc-800">
+                    ↓
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* NEXT TASKS */}
+        <section className="mt-10 grid gap-8 lg:grid-cols-2">
+
+          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-6">
+            <p className="text-xs uppercase tracking-[0.2em] text-blue-400">
+              Next Mission
+            </p>
+
+            <h2 className="mt-2 text-2xl font-semibold">
+              What We Build Next
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-zinc-500">
+              지금 시스템에서 다음으로 구축할 기능들입니다.
+            </p>
+
+            <div className="mt-6 space-y-3">
+              {nextTasks.map((task, index) => (
+                <div
+                  key={task}
+                  className="flex items-center gap-3 rounded-lg border border-white/5 bg-black/20 p-3"
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5 font-mono text-xs text-zinc-500">
+                    {index + 1}
+                  </span>
+
+                  <span className="text-sm text-zinc-300">
+                    {task}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6">
+            <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+              Cost Monitor
+            </p>
+
+            <h2 className="mt-2 text-2xl font-semibold">
+              Current Cost
+            </h2>
+
+            <div className="mt-8">
+              <p className="text-5xl font-semibold">
+                $0
+              </p>
+
+              <p className="mt-2 text-sm text-zinc-500">
+                현재 외부 AI API를 사용하지 않고 있습니다.
+              </p>
+            </div>
+
+            <div className="mt-6 border-t border-white/10 pt-5">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                <span className="text-sm text-emerald-400">
+                  No paid service required
+                </span>
+              </div>
+
+              <p className="mt-2 text-xs leading-5 text-zinc-600">
+                실제 AI 생성 API를 연결하기 전까지는
+                로컬 개발 환경에서 계속 진행할 수 있습니다.
+              </p>
+            </div>
+          </div>
+
+        </section>
+
+        {/* FOOTER */}
+        <footer className="mt-12 border-t border-white/10 py-6 text-center text-xs text-zinc-700">
+          AI Influencer Factory · System Monitoring Console
+        </footer>
+
+      </div>
+    </main>
+  );
+}
