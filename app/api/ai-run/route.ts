@@ -7,6 +7,7 @@ import {
 } from "../../lib/ai/providers";
 import { createExecutionRecord } from "../../lib/ai/execution";
 import { canStartGeneration } from "../../lib/ai/pipeline";
+import { saveExecution } from "../../lib/ai/execution-store";
 
 export async function POST(request: NextRequest) {
   try {
@@ -88,6 +89,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (!canExecuteAI(provider)) {
+      await saveExecution({
+        ...execution,
+        status: "BLOCKED",
+        executed: false,
+        actualCost: 0,
+        error: "Provider is not connected.",
+      });
+
       return NextResponse.json(
         {
           ok: false,
@@ -125,27 +134,31 @@ export async function POST(request: NextRequest) {
       model: body.model,
     });
 
+    const executionStatus =
+      result.status === "COMPLETED"
+        ? "COMPLETED"
+        : result.status === "READY"
+          ? "QUEUED"
+          : "ERROR";
+
+    const savedExecution = await saveExecution({
+      ...execution,
+      status: executionStatus,
+      executed: result.executed,
+      estimatedCost: result.estimatedCost,
+      actualCost: 0,
+      completedAt:
+        result.status === "COMPLETED"
+          ? new Date().toISOString()
+          : undefined,
+      error: result.error,
+    });
+
     return NextResponse.json({
       ok: result.status === "COMPLETED" || result.status === "READY",
       jobId,
       paidRequired: false,
-      execution: {
-        ...execution,
-        status:
-          result.status === "COMPLETED"
-            ? "COMPLETED"
-            : result.status === "READY"
-              ? "QUEUED"
-              : "ERROR",
-        executed: result.executed,
-        estimatedCost: result.estimatedCost,
-        actualCost: 0,
-        completedAt:
-          result.status === "COMPLETED"
-            ? new Date().toISOString()
-            : undefined,
-        error: result.error,
-      },
+      execution: savedExecution,
       ...result,
     });
   } catch (error) {
