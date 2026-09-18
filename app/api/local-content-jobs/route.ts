@@ -12,6 +12,9 @@ type Job = {
   type: string;
   status: string;
   createdAt: string;
+  script?: string;
+  prompt?: string;
+  approval?: string;
 };
 
 async function readJobs(): Promise<Job[]> {
@@ -42,6 +45,9 @@ export async function POST(request: NextRequest) {
     characterId: body.characterId || null,
     type: String(body.type || "post"),
     status: "draft",
+    script: "",
+    prompt: "",
+    approval: "pending",
     createdAt: new Date().toISOString(),
   };
 
@@ -62,6 +68,9 @@ export async function PATCH(request: NextRequest) {
     ...jobs[index],
     status: String(body.status ?? jobs[index].status),
     type: String(body.type ?? jobs[index].type),
+    script: String(body.script ?? jobs[index].script ?? ""),
+    prompt: String(body.prompt ?? jobs[index].prompt ?? ""),
+    approval: String(body.approval ?? jobs[index].approval ?? "pending"),
   };
   await writeJobs(jobs);
   return NextResponse.json({ ok: true, job: jobs[index] });

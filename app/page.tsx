@@ -121,6 +121,9 @@ type ContentJob = {
   type: string;
   status: string;
   createdAt: string;
+  script?: string;
+  prompt?: string;
+  approval?: string;
 };
 
 type LocalCharacter = {
@@ -229,18 +232,27 @@ export default function Home() {
     }
   }
 
-  async function updateJobStatus(id: string, status: string) {
+  async function updateContentJob(
+    id: string,
+    patch: Partial<ContentJob>
+  ) {
     const response = await fetch("/api/local-content-jobs", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status }),
+      body: JSON.stringify({ id, ...patch }),
     });
 
     const data = await response.json();
-    if (data.ok)
+
+    if (data.ok) {
       setContentJobs((current) =>
         current.map((job) => job.id === id ? data.job : job)
       );
+    }
+  }
+
+  async function updateJobStatus(id: string, status: string) {
+    await updateContentJob(id, { status });
   }
 
   async function createCharacter() {
@@ -764,6 +776,76 @@ export default function Home() {
                       >
                         Delete
                       </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3">
+                    <textarea
+                      value={job.script ?? ""}
+                      onChange={(event) =>
+                        setContentJobs((current) =>
+                          current.map((item) =>
+                            item.id === job.id
+                              ? { ...item, script: event.target.value }
+                              : item
+                          )
+                        )
+                      }
+                      onBlur={() =>
+                        updateContentJob(job.id, { script: job.script ?? "" })
+                      }
+                      placeholder="Script / caption"
+                      rows={4}
+                      className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none"
+                    />
+
+                    <textarea
+                      value={job.prompt ?? ""}
+                      onChange={(event) =>
+                        setContentJobs((current) =>
+                          current.map((item) =>
+                            item.id === job.id
+                              ? { ...item, prompt: event.target.value }
+                              : item
+                          )
+                        )
+                      }
+                      onBlur={() =>
+                        updateContentJob(job.id, { prompt: job.prompt ?? "" })
+                      }
+                      placeholder="Generation prompt"
+                      rows={3}
+                      className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none"
+                    />
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-zinc-600">
+                        Approval:
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateContentJob(job.id, { approval: "approved" })
+                        }
+                        className="rounded-lg border border-emerald-500/20 px-3 py-2 text-xs text-emerald-400"
+                      >
+                        Approve
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateContentJob(job.id, { approval: "rejected" })
+                        }
+                        className="rounded-lg border border-red-500/20 px-3 py-2 text-xs text-red-400"
+                      >
+                        Reject
+                      </button>
+
+                      <span className="ml-auto text-xs uppercase text-zinc-500">
+                        {job.approval ?? "pending"}
+                      </span>
                     </div>
                   </div>
                 </div>
