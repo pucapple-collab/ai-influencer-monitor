@@ -471,7 +471,7 @@ export default function Home() {
                   SYSTEM READY
                 </span>
                 <span className="rounded-full bg-blue-400/10 px-3 py-1 text-xs text-blue-400">
-                  NEXT: DATABASE
+                  NEXT: AI GENERATION
                 </span>
               </div>
             </div>
@@ -725,6 +725,42 @@ export default function Home() {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </section>
+
+        {/* FACTORY CORE STATUS */}
+        <section className="mt-10 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">
+                Factory Core
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold">
+                Production System Ready
+              </h2>
+              <p className="mt-2 text-sm text-zinc-500">
+                인플루언서 관리 → 콘텐츠 설계 → 승인 → 생성 대기까지 연결됨
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-xl bg-black/20 px-5 py-3">
+                <p className="text-2xl font-semibold">{characters.length}</p>
+                <p className="text-[10px] text-zinc-600">INFLUENCERS</p>
+              </div>
+
+              <div className="rounded-xl bg-black/20 px-5 py-3">
+                <p className="text-2xl font-semibold">{contentJobs.length}</p>
+                <p className="text-[10px] text-zinc-600">JOBS</p>
+              </div>
+
+              <div className="rounded-xl bg-black/20 px-5 py-3">
+                <p className="text-2xl font-semibold text-emerald-400">
+                  {contentJobs.filter((job) => job.approval === "approved").length}
+                </p>
+                <p className="text-[10px] text-zinc-600">APPROVED</p>
+              </div>
             </div>
           </div>
         </section>
