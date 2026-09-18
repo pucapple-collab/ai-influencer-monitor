@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import ProjectStatusCard from "./components/project-status";
+import type { MonitorResponse, MonitorSummary } from "./lib/monitor-types";
 
 const setupDescriptions: Record<string, string> = {
   Project: "AI Influencer Factory project",
@@ -109,27 +110,7 @@ type AIProvider = {
   keyConfigured: boolean;
 };
 
-type MonitorSummary = {
-  status: string;
-  message: string;
-  factoryProgress: number;
-  nextMission: string;
-  coreReadyCount: number;
-  coreStepCount: number;
-  completedTaskCount: number;
-  actionableTaskCount: number;
-  waitingTaskCount: number;
-  serviceCount: number;
-  activeServiceCount: number;
-  serviceProgress: number;
-  localInfluencerCount: number;
-  localContentJobCount: number;
-  approvedContentCount: number;
-  aiExecutionCost: number;
-  paidServiceRequired: boolean;
-  aiConnectedCount: number;
-  aiNotConnectedCount: number;
-};
+
 
 type MonitorOperations = Record<
   "characters" | "workflows" | "approvals" | "usage" | "errors",
@@ -200,7 +181,7 @@ export default function Home() {
         const response = await fetch("/api/local-characters", {
           cache: "no-store",
         });
-        const data = await response.json();
+        const data: MonitorResponse = await response.json();
         if (data.ok) setCharacters(data.characters ?? []);
       } catch (error) {
         console.error("Character load failed:", error);

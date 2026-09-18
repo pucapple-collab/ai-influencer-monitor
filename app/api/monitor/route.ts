@@ -4,6 +4,7 @@ import path from "path";
 import { PROJECT_STATUS_ID } from "../../lib/project-status";
 import { supabase } from "../../lib/supabase";
 import { getAIProviders } from "../../lib/ai/providers";
+import type { MonitorSummary } from "../../lib/monitor-types";
 
 async function readRuntimeJson<T>(name: string, fallback: T): Promise<T> {
   try {
