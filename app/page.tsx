@@ -169,6 +169,8 @@ export default function Home() {
   const [jobCharacterId, setJobCharacterId] = useState("");
   const [pipelineError, setPipelineError] = useState("");
   const [aiRunningJob, setAIRunningJob] = useState<string | null>(null);
+  const [selectedAIProvider, setSelectedAIProvider] = useState("higgsfield");
+
 
 
 
@@ -261,7 +263,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          provider: "higgsfield",
+          provider: selectedAIProvider,
           jobId: job.id,
         }),
       });
@@ -367,7 +369,25 @@ export default function Home() {
       try {
         const response = await fetch("/api/ai-status", { cache: "no-store" });
         const data = await response.json();
-        if (data.ok) setAIProviders(data.providers ?? []);
+        if (data.ok) {
+          const providers = data.providers ?? [];
+          setAIProviders(providers);
+
+          const configured = providers.find(
+            (provider: AIProvider) => provider.status === "CONFIGURED"
+          );
+
+          if (configured) {
+            setSelectedAIProvider((current) =>
+              providers.some(
+                (provider: AIProvider) =>
+                  provider.id === current && provider.status === "CONFIGURED"
+              )
+                ? current
+                : configured.id
+            );
+          }
+        }
       } catch (error) {
         console.error("AI provider status load failed:", error);
       }
@@ -915,6 +935,32 @@ export default function Home() {
               {pipelineError}
             </div>
           )}
+        </section>
+
+        {/* AI EXECUTION PROVIDER */}
+        <section className="mt-6 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-violet-400">
+                AI Execution
+              </p>
+              <p className="mt-1 text-sm text-zinc-500">
+                승인된 콘텐츠만 선택한 연결 Provider로 실행됩니다.
+              </p>
+            </div>
+
+            <select
+              value={selectedAIProvider}
+              onChange={(event) => setSelectedAIProvider(event.target.value)}
+              className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm"
+            >
+              {aiProviders.map((provider) => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.name} · {provider.status}
+                </option>
+              ))}
+            </select>
+          </div>
         </section>
 
         {/* CONTENT JOB MANAGER */}
