@@ -144,6 +144,9 @@ export async function GET() {
         approvedContentCount: localOperations.approvedContent,
         aiExecutionCost: 0,
         paidServiceRequired: false,
+        aiConnectedCount,
+        aiNotConnectedCount,
+
       },
 
       localOperations,

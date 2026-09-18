@@ -1,63 +1,57 @@
-export type AIProviderStatus =
-  | "READY"
-  | "NOT_CONNECTED"
-  | "CONFIGURED"
-  | "ERROR";
+export type AIProviderId = "higgsfield" | "gemini" | "claude";
 
 export type AIProvider = {
-  id: string;
+  id: AIProviderId;
   name: string;
-  role: "image" | "video" | "llm" | "automation";
-  status: AIProviderStatus;
+  role: "video" | "llm";
+  status: "CONFIGURED" | "NOT_CONNECTED";
   keyConfigured: boolean;
 };
 
+const definitions: Array<{
+  id: AIProviderId;
+  name: string;
+  role: AIProvider["role"];
+  env: string;
+}> = [
+  {
+    id: "higgsfield",
+    name: "Higgsfield",
+    role: "video",
+    env: "HIGGSFIELD_API_KEY",
+  },
+  {
+    id: "gemini",
+    name: "Gemini",
+    role: "llm",
+    env: "GEMINI_API_KEY",
+  },
+  {
+    id: "claude",
+    name: "Claude",
+    role: "llm",
+    env: "ANTHROPIC_API_KEY",
+  },
+];
+
 export function getAIProviders(): AIProvider[] {
-  return [
-    {
-      id: "higgsfield",
-      name: "Higgsfield",
-      role: "video",
-      status: process.env.HIGGSFIELD_API_KEY
-        ? "CONFIGURED"
-        : "NOT_CONNECTED",
-      keyConfigured: Boolean(process.env.HIGGSFIELD_API_KEY),
-    },
-    {
-      id: "gemini",
-      name: "Gemini",
-      role: "llm",
-      status: process.env.GEMINI_API_KEY
-        ? "CONFIGURED"
-        : "NOT_CONNECTED",
-      keyConfigured: Boolean(process.env.GEMINI_API_KEY),
-    },
-    {
-      id: "claude",
-      name: "Claude",
-      role: "llm",
-      status: process.env.ANTHROPIC_API_KEY
-        ? "CONFIGURED"
-        : "NOT_CONNECTED",
-      keyConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
-    },
-    {
-      id: "automation",
-      name: "Automation",
-      role: "automation",
-      status: process.env.N8N_WEBHOOK_URL
-        ? "CONFIGURED"
-        : "NOT_CONNECTED",
-      keyConfigured: Boolean(process.env.N8N_WEBHOOK_URL),
-    },
-  ];
+  return definitions.map((item) => {
+    const configured = Boolean(process.env[item.env]);
+
+    return {
+      id: item.id,
+      name: item.name,
+      role: item.role,
+      status: configured ? "CONFIGURED" : "NOT_CONNECTED",
+      keyConfigured: configured,
+    };
+  });
 }
 
+export function getAIProvider(id: string) {
+  return getAIProviders().find((provider) => provider.id === id);
+}
 
-export function canExecuteAI(providerId: string): boolean {
-  return getAIProviders().some(
-    (provider) =>
-      provider.id === providerId &&
-      provider.status === "CONFIGURED"
-  );
+export function canExecuteAI(id: string) {
+  return getAIProvider(id)?.status === "CONFIGURED";
 }
