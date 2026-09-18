@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const jobStatus = String(body.jobStatus ?? "READY");
+    const jobStatus = String(body.jobStatus ?? "ready");
 
     if (!canStartGeneration(approval, jobStatus)) {
       return NextResponse.json(

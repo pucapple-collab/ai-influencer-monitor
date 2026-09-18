@@ -138,10 +138,13 @@ export async function GET() {
         (job) => !job.approval || job.approval === "pending"
       ).length,
       generating: localContentJobs.filter(
-        (job) => job.status === "generating"
+        (job) => String(job.status ?? "").toLowerCase() === "generating"
+      ).length,
+      review: localContentJobs.filter(
+        (job) => String(job.status ?? "").toLowerCase() === "review"
       ).length,
       published: localContentJobs.filter(
-        (job) => job.status === "published"
+        (job) => String(job.status ?? "").toLowerCase() === "published"
       ).length,
     };
 

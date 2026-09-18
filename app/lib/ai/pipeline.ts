@@ -1,31 +1,31 @@
 
 export type ContentPipelineStatus =
-  | "IDEA"
-  | "READY"
-  | "GENERATING"
-  | "REVIEW"
-  | "PUBLISHED"
-  | "BLOCKED"
-  | "ERROR";
+  | "idea"
+  | "ready"
+  | "generating"
+  | "review"
+  | "published"
+  | "blocked"
+  | "error";
 
 export function canStartGeneration(
   approval: string,
   status: string
 ): boolean {
   return approval.toLowerCase() === "approved" &&
-    ["READY", "GENERATING"].includes(status.toUpperCase());
+    ["ready", "generating"].includes(status.toLowerCase());
 }
 
 export function generationStarted() {
   return {
-    status: "GENERATING" as ContentPipelineStatus,
+    status: "generating" as ContentPipelineStatus,
     startedAt: new Date().toISOString(),
   };
 }
 
 export function generationCompleted() {
   return {
-    status: "REVIEW" as ContentPipelineStatus,
+    status: "review" as ContentPipelineStatus,
     completedAt: new Date().toISOString(),
   };
 }
