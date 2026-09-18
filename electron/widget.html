@@ -378,6 +378,8 @@
         }).join("");
 
         const localRows = [
+          ["Factory Progress", `${summary.factoryProgress ?? 0}%`],
+          ["Next Mission", summary.nextMission ?? "-"],
           ["Next.js", local.nextServer ? "ONLINE" : "OFFLINE"],
           ["Collector", local.runtime ? "ONLINE" : "WAITING"],
           ["Electron PID", local.electronPid ?? "-"],

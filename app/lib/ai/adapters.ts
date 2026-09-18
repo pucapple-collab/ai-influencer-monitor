@@ -141,7 +141,7 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
   },
 
   higgsfield: {
-    async execute(_input) {
+    async execute() {
       const credentials =
         process.env.HF_CREDENTIALS ||
         process.env.HF_KEY;

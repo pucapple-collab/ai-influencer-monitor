@@ -110,11 +110,25 @@ type AIProvider = {
 };
 
 type MonitorSummary = {
+  status: string;
+  message: string;
   factoryProgress: number;
+  nextMission: string;
+  coreReadyCount: number;
+  coreStepCount: number;
   completedTaskCount: number;
   actionableTaskCount: number;
   waitingTaskCount: number;
+  serviceCount: number;
+  activeServiceCount: number;
   serviceProgress: number;
+  localInfluencerCount: number;
+  localContentJobCount: number;
+  approvedContentCount: number;
+  aiExecutionCost: number;
+  paidServiceRequired: boolean;
+  aiConnectedCount: number;
+  aiNotConnectedCount: number;
 };
 
 type MonitorOperations = Record<
@@ -569,7 +583,9 @@ export default function Home() {
                   SYSTEM READY
                 </span>
                 <span className="rounded-full bg-blue-400/10 px-3 py-1 text-xs text-blue-400">
-                  NEXT: AI GENERATION
+                  {monitorSummary?.nextMission
+              ? `NEXT: ${monitorSummary.nextMission.toUpperCase()}`
+              : "LOADING STATUS"}
                 </span>
               </div>
             </div>
