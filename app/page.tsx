@@ -101,6 +101,19 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+type MonitorSummary = {
+  factoryProgress: number;
+  completedTaskCount: number;
+  actionableTaskCount: number;
+  waitingTaskCount: number;
+  serviceProgress: number;
+};
+
+type MonitorOperations = Record<
+  "characters" | "workflows" | "approvals" | "usage" | "errors",
+  { status: string; count: number | null }
+>;
+
 type Service = {
   service_id: string;
   name: string;
@@ -118,6 +131,28 @@ export default function Home() {
   const [services, setServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [serviceError, setServiceError] = useState("");
+  const [monitorSummary, setMonitorSummary] = useState<MonitorSummary | null>(null);
+  const [operations, setOperations] = useState<MonitorOperations | null>(null);
+
+  useEffect(() => {
+    async function loadMonitor() {
+      try {
+        const response = await fetch("/api/monitor", { cache: "no-store" });
+        const data = await response.json();
+
+        if (data.ok) {
+          setMonitorSummary(data.summary);
+          setOperations(data.operations);
+        }
+      } catch (error) {
+        console.error("Monitor summary load failed:", error);
+      }
+    }
+
+    loadMonitor();
+    const timer = window.setInterval(loadMonitor, 10000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     async function loadServices() {
@@ -180,9 +215,15 @@ export default function Home() {
     (step) => step.status === "ready"
   ).length;
 
-  const setupProgress = Math.round(
-    (readyCount / setupSteps.length) * 100
-  );
+  const setupProgress =
+    monitorSummary?.factoryProgress ??
+    Math.round((readyCount / setupSteps.length) * 100);
+
+  const completedSetupCount =
+    monitorSummary?.completedTaskCount ?? readyCount;
+
+  const actionableSetupCount =
+    monitorSummary?.actionableTaskCount ?? setupSteps.length;
 
   return (
     <main className="min-h-screen bg-[#09090b] text-white">
@@ -282,7 +323,7 @@ export default function Home() {
               </p>
 
               <p className="mt-1 text-xs text-zinc-600">
-                {readyCount} / {setupSteps.length} systems ready
+                {completedSetupCount} / {actionableSetupCount} core tasks complete
               </p>
             </div>
           </div>
@@ -367,7 +408,7 @@ export default function Home() {
             </div>
 
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-xs text-zinc-600">AVERAGE PROGRESS</p>
+              <p className="text-xs text-zinc-600">SERVICE INTEGRATION</p>
               <p className="mt-2 text-3xl font-semibold">
                 {loadingServices ? "..." : `${liveProgress}%`}
               </p>
@@ -431,6 +472,50 @@ export default function Home() {
               )}
             </div>
           )}
+        </section>
+
+        {/* FACTORY OPERATIONS */}
+        <section className="mt-10">
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-blue-400">
+              Factory Operations
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">
+              Internal Operations
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              민감한 운영 데이터는 공개 Monitor에서 노출하지 않습니다.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {[
+              ["Characters", operations?.characters],
+              ["Workflows", operations?.workflows],
+              ["Approvals", operations?.approvals],
+              ["Usage / Cost", operations?.usage],
+              ["Errors", operations?.errors],
+            ].map(([name, value]) => {
+              const item = value as
+                | { status: string; count: number | null }
+                | undefined;
+
+              return (
+                <div
+                  key={name as string}
+                  className="rounded-xl border border-white/10 bg-white/[0.03] p-5"
+                >
+                  <p className="text-xs text-zinc-600">{name as string}</p>
+                  <p className="mt-3 text-xl font-semibold text-amber-400">
+                    {item?.count ?? item?.status ?? "..."}
+                  </p>
+                  <p className="mt-2 text-xs text-zinc-600">
+                    PRIVATE DATA
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </section>
 
         {/* ARCHITECTURE */}
