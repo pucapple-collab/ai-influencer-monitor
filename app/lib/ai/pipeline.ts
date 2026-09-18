@@ -13,7 +13,7 @@ export function canStartGeneration(
   status: string
 ): boolean {
   return approval.toLowerCase() === "approved" &&
-    ["ready", "generating"].includes(status.toLowerCase());
+    status.toLowerCase() === "ready";
 }
 
 export function generationStarted() {
