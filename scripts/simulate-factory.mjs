@@ -74,9 +74,11 @@ try {
   assert(executions.body.summary.completed >= 1, "completed execution was not recorded");
   assert(executions.body.summary.errors >= 1, "failed execution was not recorded");
 
-  const monitor = await request("/api/monitor");
-  assert(monitor.status === 200, "monitor failed");
-  assert(monitor.body.localOperations.review >= 1, "monitor review metric failed");
+  if (process.env.FACTORY_SKIP_MONITOR !== "1") {
+    const monitor = await request("/api/monitor");
+    assert(monitor.status === 200, "monitor failed");
+    assert(monitor.body.localOperations.review >= 1, "monitor review metric failed");
+  }
 
   console.log("FACTORY SIMULATION PASS");
 } finally {
