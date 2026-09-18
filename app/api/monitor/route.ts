@@ -1,18 +1,33 @@
 import { NextResponse } from "next/server";
+import { promises as fs } from "fs";
+import path from "path";
 import { PROJECT_STATUS_ID } from "../../lib/project-status";
 import { supabase } from "../../lib/supabase";
+
+async function readRuntimeJson<T>(name: string, fallback: T): Promise<T> {
+  try {
+    const file = path.join(process.cwd(), "runtime", name);
+    return JSON.parse(await fs.readFile(file, "utf8")) as T;
+  } catch {
+    return fallback;
+  }
+}
 
 export async function GET() {
   try {
     const [servicesResult, tasksResult] = await Promise.all([
       supabase
         .from("services")
-        .select("service_id,name,role,status,progress,current_job,next_action,usage_today,usage_month,quota,updated_at")
+        .select(
+          "service_id,name,role,status,progress,current_job,next_action,usage_today,usage_month,quota,updated_at"
+        )
         .order("service_id"),
 
       supabase
         .from("setup_tasks")
-        .select("task_id,service_id,title,status,evidence_url,required_input,blocked_reason,updated_at")
+        .select(
+          "task_id,service_id,title,status,evidence_url,required_input,blocked_reason,updated_at"
+        )
         .order("updated_at", { ascending: false }),
     ]);
 
@@ -37,7 +52,6 @@ export async function GET() {
     const blockedTasks = tasks.filter((task) => task.status === "blocked");
     const waitingTasks = tasks.filter((task) => task.status === "waiting");
 
-    // Deferred external integrations do not reduce core construction progress.
     const actionableTotal =
       completedTasks.length + pendingTasks.length + blockedTasks.length;
 
@@ -62,15 +76,40 @@ export async function GET() {
           )
         : 0;
 
+    const localCharacters = await readRuntimeJson<
+      Array<{ status?: string }>
+    >("characters.json", []);
+
+    const localContentJobs = await readRuntimeJson<
+      Array<{ status?: string; approval?: string }>
+    >("content-jobs.json", []);
+
+    const localOperations = {
+      influencers: localCharacters.length,
+      contentJobs: localContentJobs.length,
+      approvedContent: localContentJobs.filter(
+        (job) => job.approval === "approved"
+      ).length,
+      pendingApproval: localContentJobs.filter(
+        (job) => !job.approval || job.approval === "pending"
+      ).length,
+      generating: localContentJobs.filter(
+        (job) => job.status === "generating"
+      ).length,
+      published: localContentJobs.filter(
+        (job) => job.status === "published"
+      ).length,
+    };
+
     let status = "READY";
     let message = "Factory core is online.";
 
-    if (blockedTasks.length) {
+    if (blockedTasks.length > 0) {
       status = "BLOCKED";
       message =
         blockedTasks[0].blocked_reason ??
         `${blockedTasks[0].title} is blocked.`;
-    } else if (pendingTasks.length) {
+    } else if (pendingTasks.length > 0) {
       status = "NEXT";
       message = `Next: ${pendingTasks[0].title}`;
     }
@@ -78,6 +117,7 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       timestamp: new Date().toISOString(),
+
       summary: {
         status,
         message,
@@ -88,14 +128,12 @@ export async function GET() {
         serviceCount: services.length,
         activeServiceCount: activeServices.length,
         serviceProgress,
+        localInfluencerCount: localOperations.influencers,
+        localContentJobCount: localOperations.contentJobs,
+        approvedContentCount: localOperations.approvedContent,
       },
-      operations: {
-        characters: { status: "LOCKED", count: null },
-        workflows: { status: "LOCKED", count: null },
-        approvals: { status: "LOCKED", count: null },
-        usage: { status: "LOCKED", count: null },
-        errors: { status: "LOCKED", count: null },
-      },
+
+      localOperations,
       projectStatus,
       latestTask: pendingTasks[0] ?? blockedTasks[0] ?? null,
       services,
