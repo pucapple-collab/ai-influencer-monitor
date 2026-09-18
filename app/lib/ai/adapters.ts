@@ -1,5 +1,7 @@
 
-import { getProviderCredential } from "./providers";\n\nexport type AIProviderId = "higgsfield" | "gemini" | "claude";
+import { getProviderCredential } from "./providers";
+
+export type AIProviderId = "higgsfield" | "gemini" | "claude";
 
 export type AIExecutionInput = {
   prompt: string;
