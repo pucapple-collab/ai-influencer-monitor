@@ -216,6 +216,19 @@ export default function Home() {
     }
   }
 
+  async function deleteContentJob(id: string) {
+    const response = await fetch(
+      `/api/local-content-jobs?id=${encodeURIComponent(id)}`,
+      { method: "DELETE" }
+    );
+
+    if (response.ok) {
+      setContentJobs((current) =>
+        current.filter((job) => job.id !== id)
+      );
+    }
+  }
+
   async function updateJobStatus(id: string, status: string) {
     const response = await fetch("/api/local-content-jobs", {
       method: "PATCH",
@@ -729,21 +742,63 @@ export default function Home() {
                       <p className="mt-1 text-xs text-zinc-600">{job.type}</p>
                     </div>
 
-                    <select
-                      value={job.status}
-                      onChange={(event) => updateJobStatus(job.id, event.target.value)}
-                      className="rounded-lg border border-white/10 bg-black px-3 py-2 text-xs"
-                    >
-                      <option value="draft">DRAFT</option>
-                      <option value="ready">READY</option>
-                      <option value="generating">GENERATING</option>
-                      <option value="review">REVIEW</option>
-                      <option value="published">PUBLISHED</option>
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={job.status}
+                        onChange={(event) =>
+                          updateJobStatus(job.id, event.target.value)
+                        }
+                        className="rounded-lg border border-white/10 bg-black px-3 py-2 text-xs"
+                      >
+                        <option value="draft">01 IDEA</option>
+                        <option value="ready">02 READY</option>
+                        <option value="generating">03 GENERATING</option>
+                        <option value="review">04 REVIEW</option>
+                        <option value="published">05 PUBLISHED</option>
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={() => deleteContentJob(job.id)}
+                        className="rounded-lg border border-red-500/20 px-3 py-2 text-xs text-red-400"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* PIPELINE OVERVIEW */}
+        <section className="mt-10 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+          <p className="text-xs uppercase tracking-[0.2em] text-cyan-400">
+            Production Pipeline
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold">
+            Idea → Ready → Generate → Review → Publish
+          </h2>
+
+          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+            {[
+              ["IDEA", "draft"],
+              ["READY", "ready"],
+              ["GENERATING", "generating"],
+              ["REVIEW", "review"],
+              ["PUBLISHED", "published"],
+            ].map(([label, status]) => (
+              <div
+                key={status}
+                className="rounded-xl border border-white/10 bg-black/20 p-4"
+              >
+                <p className="text-xs text-zinc-600">{label}</p>
+                <p className="mt-2 text-3xl font-semibold">
+                  {contentJobs.filter((job) => job.status === status).length}
+                </p>
+              </div>
+            ))}
           </div>
         </section>
 

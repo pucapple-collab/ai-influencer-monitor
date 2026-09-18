@@ -58,7 +58,11 @@ export async function PATCH(request: NextRequest) {
   if (index < 0)
     return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
-  jobs[index] = { ...jobs[index], status: String(body.status ?? jobs[index].status) };
+  jobs[index] = {
+    ...jobs[index],
+    status: String(body.status ?? jobs[index].status),
+    type: String(body.type ?? jobs[index].type),
+  };
   await writeJobs(jobs);
   return NextResponse.json({ ok: true, job: jobs[index] });
 }
