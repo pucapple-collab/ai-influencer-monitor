@@ -66,3 +66,36 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true, character });
 }
+
+
+export async function PATCH(request: NextRequest) {
+  const body = await request.json();
+  const characters = await readCharacters();
+  const index = characters.findIndex((item) => item.id === body.id);
+
+  if (index < 0)
+    return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+
+  characters[index] = {
+    ...characters[index],
+    name: String(body.name ?? characters[index].name).trim(),
+    concept: String(body.concept ?? characters[index].concept).trim(),
+    status: String(body.status ?? characters[index].status),
+    updatedAt: new Date().toISOString(),
+  };
+
+  await writeCharacters(characters);
+  return NextResponse.json({ ok: true, character: characters[index] });
+}
+
+export async function DELETE(request: NextRequest) {
+  const id = new URL(request.url).searchParams.get("id");
+  const characters = await readCharacters();
+  const next = characters.filter((item) => item.id !== id);
+
+  if (next.length === characters.length)
+    return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+
+  await writeCharacters(next);
+  return NextResponse.json({ ok: true });
+}

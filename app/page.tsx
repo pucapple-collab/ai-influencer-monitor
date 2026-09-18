@@ -114,6 +114,15 @@ type MonitorOperations = Record<
   { status: string; count: number | null }
 >;
 
+type ContentJob = {
+  id: string;
+  title: string;
+  characterId: string | null;
+  type: string;
+  status: string;
+  createdAt: string;
+};
+
 type LocalCharacter = {
   id: string;
   name: string;
@@ -144,6 +153,10 @@ export default function Home() {
   const [characterName, setCharacterName] = useState("");
   const [characterConcept, setCharacterConcept] = useState("");
   const [savingCharacter, setSavingCharacter] = useState(false);
+  const [contentJobs, setContentJobs] = useState<ContentJob[]>([]);
+  const [jobTitle, setJobTitle] = useState("");
+  const [jobCharacterId, setJobCharacterId] = useState("");
+
 
   const [monitorSummary, setMonitorSummary] = useState<MonitorSummary | null>(null);
   const [operations, setOperations] = useState<MonitorOperations | null>(null);
@@ -161,8 +174,61 @@ export default function Home() {
       }
     }
 
+    async function loadJobs() {
+      try {
+        const response = await fetch("/api/local-content-jobs", { cache: "no-store" });
+        const data = await response.json();
+        if (data.ok) setContentJobs(data.jobs ?? []);
+      } catch (error) {
+        console.error("Content jobs load failed:", error);
+      }
+    }
+
     loadCharacters();
+    loadJobs();
   }, []);
+
+  async function deleteCharacter(id: string) {
+    const response = await fetch(`/api/local-characters?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    if (response.ok)
+      setCharacters((current) => current.filter((item) => item.id !== id));
+  }
+
+  async function createContentJob() {
+    if (!jobTitle.trim()) return;
+
+    const response = await fetch("/api/local-content-jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: jobTitle,
+        characterId: jobCharacterId || null,
+        type: "post",
+      }),
+    });
+
+    const data = await response.json();
+    if (data.ok) {
+      setContentJobs((current) => [data.job, ...current]);
+      setJobTitle("");
+    }
+  }
+
+  async function updateJobStatus(id: string, status: string) {
+    const response = await fetch("/api/local-content-jobs", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
+
+    const data = await response.json();
+    if (data.ok)
+      setContentJobs((current) =>
+        current.map((job) => job.id === id ? data.job : job)
+      );
+  }
 
   async function createCharacter() {
     if (!characterName.trim() || savingCharacter) return;
@@ -595,9 +661,88 @@ export default function Home() {
                     <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-zinc-500">
                       {character.concept || "No concept yet."}
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => deleteCharacter(character.id)}
+                      className="mt-4 text-xs text-red-400 hover:text-red-300"
+                    >
+                      Delete
+                    </button>
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </section>
+
+        {/* CONTENT JOB MANAGER */}
+        <section className="mt-10">
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-cyan-400">
+              Content Pipeline
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">Content Jobs</h2>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <input
+                value={jobTitle}
+                onChange={(event) => setJobTitle(event.target.value)}
+                placeholder="Content title"
+                className="w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none"
+              />
+
+              <select
+                value={jobCharacterId}
+                onChange={(event) => setJobCharacterId(event.target.value)}
+                className="mt-3 w-full rounded-lg border border-white/10 bg-black px-4 py-3 text-sm"
+              >
+                <option value="">No influencer</option>
+                {characters.map((character) => (
+                  <option key={character.id} value={character.id}>
+                    {character.name}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={createContentJob}
+                disabled={!jobTitle.trim()}
+                className="mt-3 w-full rounded-lg bg-cyan-500 px-4 py-3 text-sm font-medium disabled:opacity-40"
+              >
+                Create Content Job
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {contentJobs.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 p-8 text-sm text-zinc-600">
+                  콘텐츠 작업이 없습니다.
+                </div>
+              ) : contentJobs.map((job) => (
+                <div key={job.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-medium">{job.title}</h3>
+                      <p className="mt-1 text-xs text-zinc-600">{job.type}</p>
+                    </div>
+
+                    <select
+                      value={job.status}
+                      onChange={(event) => updateJobStatus(job.id, event.target.value)}
+                      className="rounded-lg border border-white/10 bg-black px-3 py-2 text-xs"
+                    >
+                      <option value="draft">DRAFT</option>
+                      <option value="ready">READY</option>
+                      <option value="generating">GENERATING</option>
+                      <option value="review">REVIEW</option>
+                      <option value="published">PUBLISHED</option>
+                    </select>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
