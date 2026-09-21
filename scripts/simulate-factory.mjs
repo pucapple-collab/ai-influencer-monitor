@@ -50,6 +50,9 @@ try {
   const plan = await request("/api/factory-plan");
   assert(plan.status === 200 && plan.body.ok, "factory plan failed");
   assert(plan.body.externalCallMade === false && plan.body.paidUsageTriggered === false, "factory plan must be zero-cost");
+  assert(plan.body.phase === "AWAITING_FIRST_PROVIDER", "CI factory plan must await first provider");
+  assert(plan.body.progress?.total === 7, "factory plan milestones missing");
+  assert(plan.body.realExecutionEnabled === false && plan.body.realPublishEnabled === false, "factory plan safety switches must stay disabled");
 
   const preflight = await request("/api/ai-preflight");
   assert(preflight.status === 200 && preflight.body.ok, "AI preflight failed");
