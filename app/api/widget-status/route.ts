@@ -29,11 +29,13 @@ export async function GET() {
   const realPublishEnabled = process.env.FACTORY_REAL_PUBLISH_ENABLED === "true";
   const errors = executions.filter((item) => item.status === "ERROR");
   const publishBlocked = publishAudit.filter((item) => item.status !== "PUBLISH_READY");
+  const retentionAttention = executions.length >= 500 || publishAudit.length >= 500;
   const review = jobs.filter((item) => String(item.status).toLowerCase() === "review");
   const ready = jobs.filter((item) => String(item.status).toLowerCase() === "ready" && String(item.approval).toLowerCase() === "approved");
 
   const messages: Array<{ kind: "error" | "progress" | "guide" | "next"; text: string }> = [];
   if (errors.length) messages.push({ kind: "error", text: `생성 오류 ${errors.length}건 있어. 패널에서 먼저 확인해.` });
+  if (retentionAttention) messages.push({ kind: "guide", text: "로컬 감사기록이 보관 한도에 닿아서 오래된 기록부터 자동 정리 중이야." });
   if (validation?.ok && validation.factorySimulation) messages.push({ kind: "progress", text: "마지막 로컬 검증이랑 전체 시뮬레이션 통과했어." });
   messages.push({ kind: "progress", text: `캐릭터 ${characters.length}명, 콘텐츠 작업 ${jobs.length}건 관리 중이야.` });
   if (review.length) messages.push({ kind: "guide", text: `리뷰 기다리는 콘텐츠 ${review.length}건 있어.` });
@@ -59,6 +61,7 @@ export async function GET() {
       errors: errors.length,
       publishAudit: publishAudit.length,
       publishBlocked: publishBlocked.length,
+      retentionAttention,
       configuredProviders: configured.map((item) => item.id),
       realExecutionEnabled,
       realPublishEnabled,
