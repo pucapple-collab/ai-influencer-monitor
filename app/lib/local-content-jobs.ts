@@ -21,6 +21,9 @@ export type LocalContentJob = {
   reviewNote?: string;
   reviewedAt?: string;
   publishedAt?: string;
+  publishPlatform?: string;
+  publishRequestId?: string;
+  publishPostId?: string;
 };
 
 async function readUnlocked(): Promise<LocalContentJob[]> {
