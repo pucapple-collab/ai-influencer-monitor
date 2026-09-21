@@ -1,6 +1,7 @@
 import { adapters, type AIProviderId } from "./adapters";
 import type { FactoryTaskKind } from "./orchestrator";
 import { routeFactoryTask } from "./orchestrator";
+import { canExecuteAI } from "./providers";
 
 export type DispatchMode = "dry_run" | "real";
 export type DispatchResult = {
@@ -32,13 +33,18 @@ export async function dispatchFactoryTask(input:{task:FactoryTaskKind;prompt:str
   let lastError="No executable provider.";
   for(let i=0;i<candidates.length;i++){
     const provider=candidates[i];
+    if(!canExecuteAI(provider)){lastError=`${provider} is not executable.`;continue;}
     if(!enter(provider)){lastError=`${provider} concurrency limit reached.`;continue;}
     try{
       const r=await adapters[provider].execute({prompt:input.prompt,model:input.model});
       if(r.status==="COMPLETED") return {ok:true,task:input.task,provider,fallbackUsed:i>0,executed:r.executed,externalCallMade:r.executed,paidUsageTriggered:r.executed,status:r.status,output:r.output};
       lastError=r.error??`${provider} failed.`;
       // Never fallback after an ambiguous/queued external submission.
-      if(r.executed&&r.status!=="ERROR") break;
+      if(r.executed) break;
+    } catch (error) {
+      lastError=error instanceof Error ? `${provider}: ${error.name === "AbortError" ? "request timeout" : error.message}` : `${provider} request failed.`;
+      // A thrown transport error can be ambiguous after submission. Do not fallback and risk duplicate paid work.
+      break;
     } finally { leave(provider); }
   }
   return {ok:false,task:input.task,provider:route.primary,fallbackUsed:false,executed:false,externalCallMade:false,paidUsageTriggered:false,status:"ERROR",error:lastError};
