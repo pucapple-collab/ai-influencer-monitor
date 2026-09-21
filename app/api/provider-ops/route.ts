@@ -17,6 +17,6 @@ export async function GET(){
     lastCrossReviewAt:logs.find(x=>x.status==="IMPROVEMENT"&&x.summary.includes("Cross-review cycle completed"))?.createdAt??null,
     realExternalCalls:audit.filter(x=>x.externalCallMade).length
   };
-  const auditSummary={total:audit.length,externalCalls:audit.filter(x=>x.externalCallMade).length,errors:audit.filter(x=>x.status==="ERROR").length,last:audit[0]?.createdAt??null};
+  const auditSummary={total:audit.length,externalCalls:audit.filter(x=>x.externalCallMade).length,paidCalls:audit.filter(x=>x.paidUsageTriggered).length,errors:audit.filter(x=>x.status==="ERROR").length,last:audit[0]?.createdAt??null,lastRequestId:audit.find(x=>x.requestId)?.requestId??null};
   return NextResponse.json({ok:true,externalCallMade:false,paidUsageTriggered:false,realExecutionEnabled:process.env.FACTORY_REAL_EXECUTION_ENABLED==="true",providers,queue,audit:auditSummary,collaboration});
 }
