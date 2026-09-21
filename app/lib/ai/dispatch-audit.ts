@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
-export type ProviderAudit={id:string;workId?:string;mode:"dry_run"|"real";provider?:string;status:string;externalCallMade:boolean;paidUsageTriggered:boolean;error?:string;createdAt:string};
+export type ProviderAudit={id:string;workId?:string;mode:"dry_run"|"real";provider?:string;status:string;externalCallMade:boolean;paidUsageTriggered:boolean;requestId?:string;idempotencyKey?:string;error?:string;createdAt:string};
 const file=path.join(process.cwd(),"runtime","provider-dispatch-audit.json"); const MAX=500;
 let q:Promise<void>=Promise.resolve();
 async function read(){try{const v=JSON.parse(await fs.readFile(file,"utf8"));return Array.isArray(v)?v as ProviderAudit[]:[];}catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT")return[];if(e instanceof SyntaxError){await fs.rename(file,file+".corrupt."+Date.now()).catch(()=>{});return[];}throw e;}}

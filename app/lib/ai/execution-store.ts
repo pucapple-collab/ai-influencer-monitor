@@ -12,6 +12,10 @@ async function readUnlocked(): Promise<AIExecutionRecord[]> {
     return JSON.parse(await fs.readFile(file, "utf8"));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    if (error instanceof SyntaxError) {
+      await fs.rename(file, file + ".corrupt." + Date.now()).catch(() => {});
+      return [];
+    }
     throw error;
   }
 }
