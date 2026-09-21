@@ -130,6 +130,12 @@ try {
   assert(factory.status === 200 && factory.body.mode === "DRY_RUN", "factory orchestration dry-run failed");
   assert(factory.body.stages?.length === 3, "factory orchestration must contain 3 stages");
   assert(factory.body.externalCallMade === false && factory.body.actualCost === 0, "factory orchestration must be zero-cost");
+  assert(factory.body.runId && factory.body.jobStatus === "review", "factory dry-run must persist history and move job to review");
+
+  const factoryRuns = await request("/api/factory-runs");
+  assert(factoryRuns.status === 200 && factoryRuns.body.ok, "factory run history failed");
+  assert(factoryRuns.body.externalCallMade === false && factoryRuns.body.paidUsageTriggered === false, "factory history must stay zero-cost");
+  assert(factoryRuns.body.runs.some((run) => run.id === factory.body.runId && run.jobId === successId), "factory run missing from history");
 
   const dry = await request("/api/ai-run", {
     method: "POST",
