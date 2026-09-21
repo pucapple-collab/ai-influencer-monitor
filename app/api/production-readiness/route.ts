@@ -10,6 +10,8 @@ type Check = {
 
 export async function GET() {
   const providers = getAIProviders();
+  const realExecutionEnabled = process.env.FACTORY_REAL_EXECUTION_ENABLED === "true";
+  const realPublishEnabled = process.env.FACTORY_REAL_PUBLISH_ENABLED === "true";
   const providerChecks: Check[] = providers.map((provider) => ({
     id: `provider:${provider.id}`,
     status: provider.keyConfigured ? "READY" : "BLOCKED",
@@ -48,11 +50,14 @@ export async function GET() {
     phase: blockers.length === 0 ? "READY_FOR_EXPLICIT_REAL_TEST" : "SAFE_SETUP",
     externalCallMade: false,
     paidUsageTriggered: false,
-    realExecutionEnabled: false,
+    realExecutionEnabled,
+    realPublishEnabled,
     blockers,
     checks,
     nextAction: blockers.length
       ? "Configure missing provider credentials server-side. Do not expose them as NEXT_PUBLIC variables."
-      : "Review pricing/budgets, then explicitly approve one minimal real provider test.",
+      : !realExecutionEnabled
+        ? "Review pricing/budgets, then enable FACTORY_REAL_EXECUTION_ENABLED only for an explicit minimal real test."
+        : "Server real-execution switch is enabled. Keep per-request confirmation required.",
   });
 }

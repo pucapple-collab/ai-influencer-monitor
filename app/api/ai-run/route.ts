@@ -53,6 +53,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, jobId, paidRequired: false, execution: saved, ...result });
     }
 
+    if (process.env.FACTORY_REAL_EXECUTION_ENABLED !== "true") {
+      await patchContentJob(jobId, { status: "ready" });
+      return NextResponse.json({ ok: false, executed: false, externalCallMade: false, status: "REAL_EXECUTION_DISABLED", paidRequired: false, jobId, provider, message: "실제 AI 호출은 서버 안전 스위치가 비활성화되어 있습니다." }, { status: 409 });
+    }
+
     if (body.confirmExternalCall !== true) {
       await patchContentJob(jobId, { status: "ready" });
       return NextResponse.json({ ok: false, executed: false, externalCallMade: false, status: "CONFIRMATION_REQUIRED", paidRequired: true, jobId, provider, message: "실제 외부 API 호출은 명시적 확인이 필요합니다." }, { status: 409 });
