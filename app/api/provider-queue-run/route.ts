@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       await updateProviderWork(item.id,{status:"RUNNING",attempts,idempotencyKey});
       const result=await dispatchFactoryTask({task:item.task,prompt:item.prompt,mode,confirmExternalCall:body.confirmExternalCall===true});
       await updateProviderWork(item.id,{status:result.ok?"COMPLETED":result.status==="BLOCKED"?"BLOCKED":"ERROR",lastProvider:result.provider,lastError:result.error,externalCallMade:result.externalCallMade,providerRequestId:result.requestId,idempotencyKey});
-      await appendProviderAudit({workId:item.id,mode,provider:result.provider,status:result.status,externalCallMade:result.externalCallMade,paidUsageTriggered:result.paidUsageTriggered,error:result.error});
+      await appendProviderAudit({workId:item.id,mode,provider:result.provider,status:result.status,externalCallMade:result.externalCallMade,paidUsageTriggered:result.paidUsageTriggered,requestId:result.requestId,idempotencyKey,error:result.error});
       results.push({id:item.id,...result});
       if(mode==="real" && result.externalCallMade) break;
     }
