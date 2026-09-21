@@ -16,6 +16,10 @@ function assert(value, message) {
 const createdIds = [];
 const createdCharacterIds = [];
 try {
+  const dataIntegrity = await request("/api/data-integrity");
+  assert(dataIntegrity.status === 200 && dataIntegrity.body.ok, "data integrity check failed");
+  assert(dataIntegrity.body.externalCallMade === false && dataIntegrity.body.paidUsageTriggered === false, "data integrity check must stay zero-cost");
+
   const runtimeHealth = await request("/api/runtime-health");
   assert(runtimeHealth.status === 200 && runtimeHealth.body.ok, "runtime health failed");
   assert(runtimeHealth.body.externalCallMade === false && runtimeHealth.body.paidUsageTriggered === false, "runtime health must stay zero-cost");
