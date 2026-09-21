@@ -16,6 +16,11 @@ function assert(value, message) {
 const createdIds = [];
 const createdCharacterIds = [];
 try {
+  const runtimeHealth = await request("/api/runtime-health");
+  assert(runtimeHealth.status === 200 && runtimeHealth.body.ok, "runtime health failed");
+  assert(runtimeHealth.body.externalCallMade === false && runtimeHealth.body.paidUsageTriggered === false, "runtime health must stay zero-cost");
+  assert(runtimeHealth.body.limits?.executionRecords === 500 && runtimeHealth.body.limits?.publishAuditRecords === 500, "runtime retention limits missing");
+
   const widgetStatus = await request("/api/widget-status");
   assert(widgetStatus.status === 200 && widgetStatus.body.ok, "widget status failed");
   assert(widgetStatus.body.externalCallMade === false && widgetStatus.body.paidUsageTriggered === false, "widget status must stay zero-cost");

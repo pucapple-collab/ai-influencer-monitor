@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import type { AIExecutionRecord } from "./execution";
 
 const file = path.join(process.cwd(), "runtime", "ai-executions.json");
+const MAX_RECORDS = 500;
 let mutationQueue: Promise<void> = Promise.resolve();
 
 async function readUnlocked(): Promise<AIExecutionRecord[]> {
@@ -36,6 +37,7 @@ export async function saveExecution(record: AIExecutionRecord): Promise<AIExecut
   return withMutationLock(async () => {
     const records = await readUnlocked();
     records.unshift(record);
+    if (records.length > MAX_RECORDS) records.length = MAX_RECORDS;
     await writeUnlocked(records);
     return record;
   });

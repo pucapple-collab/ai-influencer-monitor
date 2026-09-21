@@ -14,6 +14,7 @@ export type PublishAuditRecord = {
 };
 
 const file = path.join(process.cwd(), "runtime", "publish-audit.json");
+const MAX_RECORDS = 500;
 let mutationQueue: Promise<void> = Promise.resolve();
 
 async function readUnlocked(): Promise<PublishAuditRecord[]> {
@@ -41,6 +42,7 @@ export async function savePublishAudit(record: Omit<PublishAuditRecord, "id" | "
     const records = await readUnlocked();
     saved = { ...record, id: randomUUID(), createdAt: new Date().toISOString() };
     records.unshift(saved);
+    if (records.length > MAX_RECORDS) records.length = MAX_RECORDS;
     await writeUnlocked(records);
   });
   mutationQueue = operation.then(() => undefined, () => undefined);
