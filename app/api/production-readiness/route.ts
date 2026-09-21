@@ -4,46 +4,46 @@ import { getAIProviders } from "../../lib/ai/providers";
 type Check = {
   id: string;
   status: "READY" | "BLOCKED";
-  requiredForRealRun: boolean;
+  requiredForMinimalRealRun: boolean;
   message: string;
 };
 
 export async function GET() {
   const providers = getAIProviders();
+  const configured = providers.filter((provider) => provider.keyConfigured);
   const realExecutionEnabled = process.env.FACTORY_REAL_EXECUTION_ENABLED === "true";
   const realPublishEnabled = process.env.FACTORY_REAL_PUBLISH_ENABLED === "true";
+
   const providerChecks: Check[] = providers.map((provider) => ({
     id: `provider:${provider.id}`,
     status: provider.keyConfigured ? "READY" : "BLOCKED",
-    requiredForRealRun: true,
-    message: provider.keyConfigured
-      ? `${provider.name} credential detected.`
-      : `${provider.name} credential is missing.`,
+    requiredForMinimalRealRun: false,
+    message: provider.keyConfigured ? `${provider.name} credential detected.` : `${provider.name} credential is missing.`,
   }));
 
   const checks: Check[] = [
     ...providerChecks,
     {
-      id: "generation-confirmation-gate",
-      status: "READY",
-      requiredForRealRun: true,
-      message: "Real generation requires confirmExternalCall=true.",
+      id: "at-least-one-provider",
+      status: configured.length > 0 ? "READY" : "BLOCKED",
+      requiredForMinimalRealRun: true,
+      message: configured.length > 0 ? `Minimal test provider ready: ${configured.map((provider) => provider.name).join(", ")}.` : "At least one provider credential is required for a minimal real test.",
     },
     {
-      id: "publish-confirmation-gate",
+      id: "generation-confirmation-gate",
       status: "READY",
-      requiredForRealRun: true,
-      message: "Real publishing requires confirmExternalPublish=true.",
+      requiredForMinimalRealRun: true,
+      message: "Real generation requires confirmExternalCall=true.",
     },
     {
       id: "publishing-adapter",
       status: "BLOCKED",
-      requiredForRealRun: false,
+      requiredForMinimalRealRun: false,
       message: "Publishing target is intentionally not selected yet.",
     },
   ];
 
-  const blockers = checks.filter((check) => check.requiredForRealRun && check.status === "BLOCKED");
+  const blockers = checks.filter((check) => check.requiredForMinimalRealRun && check.status === "BLOCKED");
 
   return NextResponse.json({
     ok: true,
@@ -52,12 +52,13 @@ export async function GET() {
     paidUsageTriggered: false,
     realExecutionEnabled,
     realPublishEnabled,
+    configuredProviders: configured.map((provider) => provider.id),
     blockers,
     checks,
     nextAction: blockers.length
-      ? "Configure missing provider credentials server-side. Do not expose them as NEXT_PUBLIC variables."
+      ? "Configure one provider credential server-side for a minimal real test. Do not expose it as NEXT_PUBLIC."
       : !realExecutionEnabled
-        ? "Review pricing/budgets, then enable FACTORY_REAL_EXECUTION_ENABLED only for an explicit minimal real test."
+        ? "Review pricing/budgets, then temporarily enable FACTORY_REAL_EXECUTION_ENABLED for one explicit minimal test."
         : "Server real-execution switch is enabled. Keep per-request confirmation required.",
   });
 }

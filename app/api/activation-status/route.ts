@@ -3,15 +3,29 @@ import { getAIProviders } from "../../lib/ai/providers";
 
 export async function GET() {
   const providers = getAIProviders();
-  const missing = providers.filter((provider) => !provider.keyConfigured).map((provider) => provider.name);
+  const configured = providers.filter((provider) => provider.keyConfigured);
+  const missing = providers.filter((provider) => !provider.keyConfigured);
   const realExecutionEnabled = process.env.FACTORY_REAL_EXECUTION_ENABLED === "true";
   const realPublishEnabled = process.env.FACTORY_REAL_PUBLISH_ENABLED === "true";
+  const anyProviderReady = configured.length > 0;
+  const fullFactoryProvidersReady = missing.length === 0;
 
   const steps = [
     { id: "remote-code", label: "Remote code + CI", status: "DONE" },
     { id: "local-preflight", label: "Mac local preflight", status: "DONE" },
-    { id: "provider-credentials", label: "Provider credentials", status: missing.length ? "BLOCKED" : "READY", detail: missing.length ? `Missing: ${missing.join(", ")}` : "Server credentials detected" },
-    { id: "real-generation", label: "Minimal real generation", status: realExecutionEnabled ? "READY" : "LOCKED", detail: "Requires explicit per-request confirmation" },
+    {
+      id: "first-provider",
+      label: "First provider credential",
+      status: anyProviderReady ? "READY" : "BLOCKED",
+      detail: anyProviderReady ? `Ready: ${configured.map((provider) => provider.name).join(", ")}` : "No server provider credential detected",
+    },
+    {
+      id: "full-factory-providers",
+      label: "Full factory provider set",
+      status: fullFactoryProvidersReady ? "READY" : "BLOCKED",
+      detail: fullFactoryProvidersReady ? "All provider credentials detected" : `Missing: ${missing.map((provider) => provider.name).join(", ")}`,
+    },
+    { id: "real-generation", label: "Minimal real generation", status: realExecutionEnabled ? "READY" : "LOCKED", detail: "Requires server switch plus explicit per-request confirmation" },
     { id: "publishing", label: "External publishing", status: realPublishEnabled ? "READY" : "LOCKED", detail: "Target adapter is still intentionally disconnected" },
   ];
 
@@ -22,16 +36,16 @@ export async function GET() {
     paidUsageTriggered: false,
     realExecutionEnabled,
     realPublishEnabled,
-    missingProviders: missing,
-    progress: {
-      completed: steps.filter((step) => step.status === "DONE").length,
-      total: steps.length,
-    },
+    anyProviderReady,
+    fullFactoryProvidersReady,
+    configuredProviders: configured.map((provider) => provider.id),
+    missingProviders: missing.map((provider) => provider.id),
+    progress: { completed: steps.filter((step) => ["DONE", "READY"].includes(step.status)).length, total: steps.length },
     steps,
-    nextAction: missing.length
-      ? "Add provider credentials server-side after reviewing current pricing and spend controls."
+    nextAction: !anyProviderReady
+      ? "Review current pricing/spend controls, then add one provider credential server-side for a minimal test."
       : !realExecutionEnabled
-        ? "Approve one minimal real-generation test, then temporarily enable the real-execution switch."
-        : "Run one explicitly confirmed real-generation test.",
+        ? "One provider is ready. Keep the switch off until an explicit minimal paid test is approved."
+        : "Run one explicitly confirmed real-generation test with a configured provider.",
   });
 }
