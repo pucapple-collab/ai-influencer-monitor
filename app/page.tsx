@@ -250,14 +250,12 @@ export default function Home() {
       (item) => item.id === selectedAIProvider
     );
 
-    if (!provider || provider.status !== "CONFIGURED") {
-      setPipelineError(
-        `${provider?.name ?? selectedAIProvider} 연결이 필요합니다. 외부 API 호출은 실행하지 않았습니다.`
-      );
+    if (!provider) {
+      setPipelineError("AI Provider 정보를 불러오지 못했습니다.");
       return;
     }
 
-    if (job.approval !== "approved") {
+    if (job.approval !== "approved" || job.status !== "ready") {
       setPipelineError("승인된 콘텐츠만 AI 생성을 실행할 수 있습니다.");
       return;
     }
@@ -283,7 +281,9 @@ export default function Home() {
         return;
       }
 
-      await updateContentJob(job.id, { status: "generating" });
+      const jobsResponse = await fetch("/api/local-content-jobs", { cache: "no-store" });
+      const jobsData = await jobsResponse.json();
+      if (jobsData.ok) setContentJobs(jobsData.jobs ?? []);
     } catch (error) {
       setPipelineError(
         error instanceof Error ? error.message : "AI execution failed."
