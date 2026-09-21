@@ -16,6 +16,12 @@ function assert(value, message) {
 const createdIds = [];
 const createdCharacterIds = [];
 try {
+  const backup = await request("/api/local-backup");
+  assert(backup.status === 200, "local backup export failed");
+  assert(backup.body.schemaVersion === 1 && backup.body.secretsIncluded === false, "backup safety metadata missing");
+  assert(backup.body.externalCallMade === false && backup.body.paidUsageTriggered === false, "backup export must stay zero-cost");
+  assert(Array.isArray(backup.body.data?.characters) && Array.isArray(backup.body.data?.jobs), "backup core collections missing");
+
   const dataIntegrity = await request("/api/data-integrity");
   assert(dataIntegrity.status === 200 && dataIntegrity.body.ok, "data integrity check failed");
   assert(dataIntegrity.body.externalCallMade === false && dataIntegrity.body.paidUsageTriggered === false, "data integrity check must stay zero-cost");
