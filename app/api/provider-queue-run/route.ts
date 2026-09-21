@@ -19,13 +19,14 @@ export async function POST(request: NextRequest) {
       await updateProviderWork(stale.id,{status:"ERROR",lastError:"Recovered stale RUNNING item after 5 minutes."});
     }
     const refreshed = await getProviderWorkQueue();
-    const planned = refreshed.filter(item => item.status === "PLANNED").slice(0, limit);
+    const planned = refreshed.filter(item => item.status === "PLANNED" && !(mode === "real" && item.externalCallMade)).slice(0, limit);
     const results = [];
     for (const item of planned) {
       const attempts=(item.attempts ?? 0)+1;
-      await updateProviderWork(item.id,{status:"RUNNING",attempts});
+      const idempotencyKey=item.idempotencyKey ?? item.id;
+      await updateProviderWork(item.id,{status:"RUNNING",attempts,idempotencyKey});
       const result=await dispatchFactoryTask({task:item.task,prompt:item.prompt,mode,confirmExternalCall:body.confirmExternalCall===true});
-      await updateProviderWork(item.id,{status:result.ok?"COMPLETED":result.status==="BLOCKED"?"BLOCKED":"ERROR",lastProvider:result.provider,lastError:result.error,externalCallMade:result.externalCallMade});
+      await updateProviderWork(item.id,{status:result.ok?"COMPLETED":result.status==="BLOCKED"?"BLOCKED":"ERROR",lastProvider:result.provider,lastError:result.error,externalCallMade:result.externalCallMade,providerRequestId:result.requestId,idempotencyKey});
       await appendProviderAudit({workId:item.id,mode,provider:result.provider,status:result.status,externalCallMade:result.externalCallMade,paidUsageTriggered:result.paidUsageTriggered,error:result.error});
       results.push({id:item.id,...result});
       if(mode==="real" && result.externalCallMade) break;
