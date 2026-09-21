@@ -6,8 +6,11 @@ export type PublishAuditRecord = {
   id: string;
   jobId: string;
   mode: "DRY_RUN" | "REAL";
-  status: "PUBLISH_READY" | "BLOCKED" | "REAL_PUBLISH_DISABLED" | "CONFIRMATION_REQUIRED" | "NOT_CONNECTED";
-  externalCallMade: false;
+  status: "PUBLISH_READY" | "BLOCKED" | "REAL_PUBLISH_DISABLED" | "CONFIRMATION_REQUIRED" | "NOT_CONNECTED" | "PUBLISH_PLATFORM_REQUIRED" | "PUBLISH_CREDENTIALS_REQUIRED" | "PUBLISH_ADAPTER_REQUIRED" | "PUBLISHED" | "ERROR";
+  externalCallMade: boolean;
+  platform?: string;
+  requestId?: string;
+  postId?: string;
   actualCost: 0;
   message: string;
   createdAt: string;
@@ -21,6 +24,10 @@ async function readUnlocked(): Promise<PublishAuditRecord[]> {
   try { return JSON.parse(await fs.readFile(file, "utf8")); }
   catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    if (error instanceof SyntaxError) {
+      await fs.rename(file, file + ".corrupt." + Date.now()).catch(() => {});
+      return [];
+    }
     throw error;
   }
 }
