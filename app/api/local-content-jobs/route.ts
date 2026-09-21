@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import {
   readContentJobs,
-  writeContentJobs,
+  mutateContentJobs,
   type LocalContentJob,
 } from "../../lib/local-content-jobs";
 
@@ -15,7 +15,6 @@ export async function POST(request: NextRequest) {
   const title = String(body.title ?? "").trim();
   if (!title) return NextResponse.json({ ok: false, error: "Title required" }, { status: 400 });
 
-  const jobs = await readContentJobs();
   const job: LocalContentJob = {
     id: crypto.randomUUID(),
     title,
@@ -27,15 +26,16 @@ export async function POST(request: NextRequest) {
     approval: "pending",
     createdAt: new Date().toISOString(),
   };
-  jobs.unshift(job);
-  await writeContentJobs(jobs);
+  await mutateContentJobs((jobs) => {
+    jobs.unshift(job);
+  });
   return NextResponse.json({ ok: true, job });
 }
 
 export async function PATCH(request: NextRequest) {
   const body = await request.json();
-  const jobs = await readContentJobs();
   const jobId = String(body.id ?? body.jobId ?? "").trim();
+  const jobs = await readContentJobs();
   const index = jobs.findIndex((job) => job.id === jobId);
   if (index < 0) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
@@ -55,14 +55,22 @@ export async function PATCH(request: NextRequest) {
     prompt: String(body.prompt ?? jobs[index].prompt ?? ""),
     approval,
   };
-  await writeContentJobs(jobs);
-  return NextResponse.json({ ok: true, job: jobs[index] });
+  const updated = await mutateContentJobs((current) => {
+    const currentIndex = current.findIndex((job) => job.id === jobId);
+    if (currentIndex < 0) return null;
+    current[currentIndex] = { ...current[currentIndex], ...jobs[index], id: current[currentIndex].id };
+    return current[currentIndex];
+  });
+  if (!updated) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+  return NextResponse.json({ ok: true, job: updated });
 }
 
 export async function DELETE(request: NextRequest) {
   const id = new URL(request.url).searchParams.get("id");
   if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
-  const jobs = await readContentJobs();
-  await writeContentJobs(jobs.filter((job) => job.id !== id));
+  await mutateContentJobs((jobs) => {
+    const index = jobs.findIndex((job) => job.id === id);
+    if (index >= 0) jobs.splice(index, 1);
+  });
   return NextResponse.json({ ok: true });
 }
