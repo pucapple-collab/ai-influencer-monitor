@@ -19,6 +19,8 @@ try {
   assert(activation.status === 200 && activation.body.ok, "activation status failed");
   assert(activation.body.externalCallMade === false && activation.body.paidUsageTriggered === false, "activation status must be zero-cost");
   assert(activation.body.realExecutionEnabled === false && activation.body.realPublishEnabled === false, "activation safety switches must stay disabled during validation");
+  assert(activation.body.anyProviderReady === false, "CI must not pretend a paid provider is configured");
+  assert(activation.body.fullFactoryProvidersReady === false, "CI must not pretend the full provider set is configured");
 
   const readiness = await request("/api/production-readiness");
   assert(readiness.status === 200 && readiness.body.ok, "production readiness failed");
