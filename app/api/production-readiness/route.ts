@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAIProviders } from "../../lib/ai/providers";
+import { getPublishReadiness } from "../../lib/publish-adapters";
 
 type Check = {
   id: string;
@@ -14,6 +15,7 @@ export async function GET() {
   const executable = configured.filter((provider) => provider.executionImplemented);
   const realExecutionEnabled = process.env.FACTORY_REAL_EXECUTION_ENABLED === "true";
   const realPublishEnabled = process.env.FACTORY_REAL_PUBLISH_ENABLED === "true";
+  const publishPlatforms = getPublishReadiness();
 
   const providerChecks: Check[] = providers.map((provider) => ({
     id: `provider:${provider.id}`,
@@ -42,9 +44,9 @@ export async function GET() {
     },
     {
       id: "publishing-adapter",
-      status: "BLOCKED",
+      status: publishPlatforms.some((item) => item.configured && item.implementationReady) ? "READY" : "BLOCKED",
       requiredForMinimalRealRun: false,
-      message: "Publishing target is intentionally not selected yet.",
+      message: publishPlatforms.some((item) => item.configured && item.implementationReady) ? "At least one publishing adapter is ready." : "No external publishing adapter is fully ready yet.",
     },
   ];
 
@@ -61,6 +63,7 @@ export async function GET() {
     executableProviders: executable.map((provider) => provider.id),
     blockers,
     checks,
+    publishPlatforms,
     nextAction: blockers.length
       ? "Configure one provider credential server-side for a minimal real test. Do not expose it as NEXT_PUBLIC."
       : !realExecutionEnabled
