@@ -69,6 +69,20 @@ try {
   assert(plan.body.progress?.total === 7, "factory plan milestones missing");
   assert(plan.body.realExecutionEnabled === false && plan.body.realPublishEnabled === false, "factory plan safety switches must stay disabled");
 
+  const dispatchDry = await request("/api/provider-dispatch", {
+    method: "POST",
+    body: JSON.stringify({ task: "coding", prompt: "zero-cost dispatch test" }),
+  });
+  assert(dispatchDry.status === 200 && dispatchDry.body.status === "DRY_RUN", "provider dispatch dry-run failed");
+  assert(dispatchDry.body.externalCallMade === false && dispatchDry.body.paidUsageTriggered === false, "provider dispatch dry-run must stay zero-cost");
+
+  const dispatchRealBlocked = await request("/api/provider-dispatch", {
+    method: "POST",
+    body: JSON.stringify({ task: "coding", prompt: "must-not-call", mode: "real", confirmExternalCall: true }),
+  });
+  assert(dispatchRealBlocked.status === 409 && dispatchRealBlocked.body.status === "BLOCKED", "provider dispatcher real-call safety gate failed");
+  assert(dispatchRealBlocked.body.externalCallMade === false, "blocked provider dispatch made external call");
+
   const preflight = await request("/api/ai-preflight");
   assert(preflight.status === 200 && preflight.body.ok, "AI preflight failed");
   assert(preflight.body.externalCallMade === false, "preflight must not call providers");
