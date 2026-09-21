@@ -1,5 +1,5 @@
 
-import { getProviderCredential } from "./providers";
+import { getHiggsfieldCredential, getProviderCredential } from "./providers";
 
 export type AIProviderId = "higgsfield" | "gemini" | "claude";
 
@@ -47,17 +47,11 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
         "gemini-3.8-flash";
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        "https://generativelanguage.googleapis.com/v1beta/interactions",
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: input.prompt }],
-              },
-            ],
-          }),
+          body: JSON.stringify({ model, input: input.prompt }),
         }
       );
 
@@ -78,8 +72,7 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
         executed: true,
         status: "COMPLETED",
         estimatedCost: 0,
-        output:
-          data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "",
+        output: data?.output_text ?? data?.outputs?.map((item: { text?: string }) => item.text ?? "").join("\n") ?? "",
       };
     },
   },
@@ -144,8 +137,7 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
 
   higgsfield: {
     async execute() {
-      const credentials = getProviderCredential("higgsfield");
-
+      const credentials = getHiggsfieldCredential();
       if (!credentials) return missing("higgsfield");
 
       return {
@@ -154,7 +146,7 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
         status: "READY",
         estimatedCost: 0,
         error:
-          "Higgsfield credentials detected. Explicit model selection is required before billing execution.",
+          "Higgsfield connection is configured. Generation is routed through the dedicated async media workflow so request IDs, polling, and cost preflight can be tracked safely.",
       };
     },
   },
