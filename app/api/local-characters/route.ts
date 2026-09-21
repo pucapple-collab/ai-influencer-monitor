@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createCharacter, deleteCharacter, patchCharacter, readCharacters } from "../../lib/local-characters";
+import { deleteContentJobsForCharacter, readContentJobs } from "../../lib/local-content-jobs";
 
 export async function GET() {
   return NextResponse.json({ ok: true, characters: await readCharacters() });
@@ -30,7 +31,19 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const id = new URL(request.url).searchParams.get("id") ?? "";
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id") ?? "";
+  const cascade = url.searchParams.get("cascade") === "true";
+  const jobs = (await readContentJobs()).filter((job) => job.characterId === id);
+  if (jobs.length && !cascade) {
+    return NextResponse.json({
+      ok: false,
+      status: "DEPENDENCY_BLOCKED",
+      dependentJobs: jobs.length,
+      error: "Character has content jobs. Delete them first or explicitly use cascade=true.",
+    }, { status: 409 });
+  }
   if (!(await deleteCharacter(id))) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
-  return NextResponse.json({ ok: true });
+  const deletedJobs = cascade ? await deleteContentJobsForCharacter(id) : 0;
+  return NextResponse.json({ ok: true, deletedJobs });
 }
