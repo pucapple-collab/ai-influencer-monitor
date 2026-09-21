@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { blockRemoteMutation } from "../../lib/local-api-guard";
 import { getContentJob, patchContentJob } from "../../lib/local-content-jobs";
 import { simulateFactoryPipeline } from "../../lib/ai/factory-pipeline";
 import { saveFactoryRun } from "../../lib/factory-run-store";
 
 export async function POST(request: NextRequest) {
+  const blocked = blockRemoteMutation(request); if (blocked) return blocked;
   try {
     const body = await request.json();
     const jobId = String(body.jobId ?? "").trim();

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { blockRemoteMutation } from "../../lib/local-api-guard";
 import { getContentJob } from "../../lib/local-content-jobs";
 import { savePublishAudit } from "../../lib/publish-audit";
 
@@ -7,6 +8,7 @@ async function audit(jobId: string, mode: "DRY_RUN" | "REAL", status: "PUBLISH_R
 }
 
 export async function POST(request: NextRequest) {
+  const blocked = blockRemoteMutation(request); if (blocked) return blocked;
   try {
     const body = await request.json();
     const jobId = String(body.jobId ?? "").trim();

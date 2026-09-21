@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { blockRemoteMutation } from "../../lib/local-api-guard";
 import {
   readContentJobs,
   mutateContentJobs,
@@ -12,6 +13,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const blocked = blockRemoteMutation(request); if (blocked) return blocked;
   const body = await request.json();
   const title = String(body.title ?? "").trim();
   if (!title) return NextResponse.json({ ok: false, error: "Title required" }, { status: 400 });
@@ -34,6 +36,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const blocked = blockRemoteMutation(request); if (blocked) return blocked;
   const body = await request.json();
   const jobId = String(body.id ?? body.jobId ?? "").trim();
   const jobs = await readContentJobs();
@@ -61,6 +64,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const blocked = blockRemoteMutation(request); if (blocked) return blocked;
   const id = new URL(request.url).searchParams.get("id");
   if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
   await mutateContentJobs((jobs) => {

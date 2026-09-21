@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function blockRemoteMutation(request: NextRequest) {
-  if (process.env.VERCEL || process.env.FACTORY_ALLOW_REMOTE_MUTATIONS === "true") {
-    if (process.env.FACTORY_ALLOW_REMOTE_MUTATIONS === "true") return null;
+  if (process.env.VERCEL) {
     return NextResponse.json({ok:false,error:"Local runtime mutation is disabled on hosted deployments.",externalCallMade:false,paidUsageTriggered:false},{status:403});
   }
   const host=request.nextUrl.hostname;
