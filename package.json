@@ -10,7 +10,8 @@
     "desktop": "electron electron/main.cjs",
     "simulate:factory": "node scripts/simulate-factory.mjs",
     "check": "npm run lint && npm run build",
-    "verify": "npm run check"
+    "verify": "npm run check",
+    "finalize:mac": "bash scripts/finalize-mac.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
