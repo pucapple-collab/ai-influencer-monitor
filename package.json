@@ -11,7 +11,8 @@
     "simulate:factory": "node scripts/simulate-factory.mjs",
     "check": "npm run lint && npm run build",
     "verify": "npm run check",
-    "finalize:mac": "bash scripts/finalize-mac.sh"
+    "finalize:mac": "bash scripts/finalize-mac.sh",
+    "collaborate:real": "node scripts/run-real-collaboration.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
