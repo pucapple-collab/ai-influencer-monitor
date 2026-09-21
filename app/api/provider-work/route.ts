@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { blockRemoteMutation } from "../../lib/local-api-guard";
 import { getProviderWorkQueue, planProviderWork } from "../../lib/ai/work-queue";
 import type { FactoryTaskKind } from "../../lib/ai/orchestrator";
 
@@ -10,6 +11,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const blocked=blockRemoteMutation(request); if(blocked) return blocked;
   try {
     const body = await request.json();
     const task = String(body.task ?? "") as FactoryTaskKind;
