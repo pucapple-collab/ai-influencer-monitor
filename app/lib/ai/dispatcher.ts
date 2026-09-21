@@ -31,13 +31,19 @@ export async function dispatchFactoryTask(input:{task:FactoryTaskKind;prompt:str
     return {ok:false,task:input.task,provider:route.primary,fallbackUsed:false,executed:false,externalCallMade:false,paidUsageTriggered:false,status:"BLOCKED",error:"Real execution requires server switch and explicit confirmation."};
   }
   let lastError="No executable provider.";
+  let attemptedProvider: AIProviderId = route.primary;
+  let fallbackUsed = false;
+  let externalCallMade = false;
   for(let i=0;i<candidates.length;i++){
     const provider=candidates[i];
+    attemptedProvider = provider;
+    fallbackUsed = i > 0;
     if(!canExecuteAI(provider)){lastError=`${provider} is not executable.`;continue;}
     if(!enter(provider)){lastError=`${provider} concurrency limit reached.`;continue;}
     try{
       const r=await adapters[provider].execute({prompt:input.prompt,model:input.model});
-      if(r.status==="COMPLETED") return {ok:true,task:input.task,provider,fallbackUsed:i>0,executed:r.executed,externalCallMade:r.executed,paidUsageTriggered:r.executed,status:r.status,output:r.output};
+      externalCallMade = externalCallMade || r.executed;
+      if(r.status==="COMPLETED") return {ok:true,task:input.task,provider,fallbackUsed,executed:r.executed,externalCallMade:r.executed,paidUsageTriggered:r.executed,status:r.status,output:r.output};
       lastError=r.error??`${provider} failed.`;
       // Never fallback after an ambiguous/queued external submission.
       if(r.executed) break;
@@ -47,5 +53,5 @@ export async function dispatchFactoryTask(input:{task:FactoryTaskKind;prompt:str
       break;
     } finally { leave(provider); }
   }
-  return {ok:false,task:input.task,provider:route.primary,fallbackUsed:false,executed:false,externalCallMade:false,paidUsageTriggered:false,status:"ERROR",error:lastError};
+  return {ok:false,task:input.task,provider:attemptedProvider,fallbackUsed,executed:externalCallMade,externalCallMade,paidUsageTriggered:externalCallMade,status:"ERROR",error:lastError};
 }
