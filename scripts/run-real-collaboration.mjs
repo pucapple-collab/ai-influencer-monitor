@@ -1,5 +1,3 @@
-import fs from "node:fs/promises";
-
 const base=process.env.FACTORY_LOCAL_URL||"http://127.0.0.1:3000";
 const task=process.argv.slice(2).join(" ")||"Review the current factory orchestration and identify the highest-priority reliability or test gap with concrete implementation and test recommendations.";
 
@@ -25,18 +23,23 @@ try{
   });
   const logs=await json(base+"/api/ai-development-log");
   const items=logs.items||logs.logs||[];
+  const id=result.collaborationId;
+  const cycle=items.filter(x=>typeof x.task==="string" && (x.task===id || x.task.startsWith(id+":")));
   const evidence={
-    claude:items.filter(x=>x.agent==="claude").slice(0,6).map(x=>x.status),
-    gemini:items.filter(x=>x.agent==="gemini").slice(0,6).map(x=>x.status),
-    improvement:items.some(x=>x.status==="IMPROVEMENT")
+    claude:cycle.filter(x=>x.agent==="claude").map(x=>x.status),
+    gemini:cycle.filter(x=>x.agent==="gemini").map(x=>x.status),
+    reviews:cycle.filter(x=>x.status==="REVIEW").length,
+    improvement:cycle.some(x=>x.status==="IMPROVEMENT")
   };
+  const proven=result.crossReviewComplete && evidence.reviews===2 && evidence.improvement;
+  if(!proven) throw new Error("Current collaboration cycle is missing reciprocal review/improvement evidence.");
   console.log(JSON.stringify({
     ok:result.ok,
     real:result.real,
     crossReviewComplete:result.crossReviewComplete,
     externalCallMade:result.externalCallMade,
     paidUsageTriggered:result.paidUsageTriggered,
-    providers:{claude:result.claude?.status,gemini:result.gemini?.status},
+    collaborationId:id,\n    providers:{claude:result.claude?.status,gemini:result.gemini?.status,claudeReview:result.claudeReview?.status,geminiReview:result.geminiReview?.status},
     evidence
   },null,2));
   if(!result.crossReviewComplete) process.exitCode=2;
