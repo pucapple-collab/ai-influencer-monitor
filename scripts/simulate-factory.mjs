@@ -14,6 +14,7 @@ function assert(value, message) {
 }
 
 const createdIds = [];
+const createdCharacterIds = [];
 try {
   const widgetStatus = await request("/api/widget-status");
   assert(widgetStatus.status === 200 && widgetStatus.body.ok, "widget status failed");
@@ -29,6 +30,7 @@ try {
   const characterList = await request("/api/local-characters");
   for (const response of concurrentCharacters) {
     assert(response.status === 200 && response.body.character?.id, "concurrent character creation failed");
+    createdCharacterIds.push(response.body.character.id);
     assert(characterList.body.characters.some((item) => item.id === response.body.character.id), "concurrent character mutation was lost");
   }
 
@@ -177,5 +179,8 @@ try {
 } finally {
   for (const id of createdIds) {
     await request("/api/local-content-jobs?id=" + encodeURIComponent(id), { method: "DELETE" }).catch(() => {});
+  }
+  for (const id of createdCharacterIds) {
+    await request("/api/local-characters?id=" + encodeURIComponent(id), { method: "DELETE" }).catch(() => {});
   }
 }
