@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 127.0.0.1",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 127.0.0.1",
     "lint": "eslint",
     "desktop": "electron electron/main.cjs",
-    "simulate:factory": "node scripts/simulate-factory.mjs",
+    "simulate:factory": "node scripts/verify-provider-safety.cjs && node scripts/simulate-factory.mjs",
+    "verify:provider-safety": "node scripts/verify-provider-safety.cjs",
     "check": "npm run lint && npm run build",
     "verify": "npm run check",
     "finalize:mac": "bash scripts/finalize-mac.sh"

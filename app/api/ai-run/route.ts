@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { blockRemoteMutation } from "../../lib/local-api-guard";
 import { adapters, type AIProviderId } from "../../lib/ai/adapters";
 import { canExecuteAI, isAIProviderId } from "../../lib/ai/providers";
 import { createExecutionRecord } from "../../lib/ai/execution";
@@ -8,6 +9,7 @@ import { getContentJob, patchContentJob } from "../../lib/local-content-jobs";
 import { runDrySimulation } from "../../lib/ai/simulation";
 
 export async function POST(request: NextRequest) {
+  const blocked = blockRemoteMutation(request); if (blocked) return blocked;
   let activeJobId = "";
   let generationStarted = false;
   let activeMode = "dry_run";

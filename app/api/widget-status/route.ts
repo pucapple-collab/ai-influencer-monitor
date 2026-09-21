@@ -7,6 +7,8 @@ import { getExecutions } from "../../lib/ai/execution-store";
 import { readCharacters } from "../../lib/local-characters";
 import { getPublishAudit } from "../../lib/publish-audit";
 import { getFactoryRuns } from "../../lib/factory-run-store";
+import { getProviderWorkSummary } from "../../lib/ai/work-queue";
+import { getProviderAudit } from "../../lib/ai/dispatch-audit";
 
 async function readRuntime<T>(name: string): Promise<T | null> {
   try {
@@ -17,13 +19,15 @@ async function readRuntime<T>(name: string): Promise<T | null> {
 }
 
 export async function GET() {
-  const [jobs, executions, characters, publishAudit, factoryRuns, validation] = await Promise.all([
+  const [jobs, executions, characters, publishAudit, factoryRuns, validation, providerQueue, providerAudit] = await Promise.all([
     readContentJobs(),
     getExecutions(),
     readCharacters(),
     getPublishAudit(),
     getFactoryRuns(),
     readRuntime<{ ok?: boolean; validatedAt?: string; factorySimulation?: boolean }>("validation-status.json"),
+    getProviderWorkSummary(),
+    getProviderAudit(),
   ]);
   const providers = getAIProviders();
   const configured = providers.filter((provider) => provider.keyConfigured);
@@ -43,6 +47,9 @@ export async function GET() {
   if (validation?.ok && validation.factorySimulation) messages.push({ kind: "progress", text: "마지막 로컬 검증이랑 전체 시뮬레이션 통과했어." });
   messages.push({ kind: "progress", text: `캐릭터 ${characters.length}명, 콘텐츠 작업 ${jobs.length}건 관리 중이야.` });
   if (factoryRuns.length) messages.push({ kind: "progress", text: `전체 Factory 시뮬레이션 기록 ${factoryRuns.length}건 쌓였어.` });
+  if (providerQueue.running || providerQueue.errors) messages.push({ kind: "guide", text: `Provider 작업 실행 중 ${providerQueue.running}건, 오류 ${providerQueue.errors}건 있어.` });
+  const uncertainProviderCalls = providerAudit.filter((item) => item.externalCallUncertain).length;
+  if (uncertainProviderCalls) messages.push({ kind: "error", text: `중단된 Provider 작업 중 외부 호출 여부 미확인 ${uncertainProviderCalls}건 있어. 재시도 전 확인해.` });
   if (review.length) messages.push({ kind: "guide", text: `리뷰 기다리는 콘텐츠 ${review.length}건 있어.` });
   if (publishBlocked.length) messages.push({ kind: "guide", text: `게시 게이트에서 막힌 기록 ${publishBlocked.length}건 있어. 아직 외부 게시 호출은 안 나갔어.` });
   if (ready.length) messages.push({ kind: "guide", text: `승인 끝나고 생성 대기 중인 작업 ${ready.length}건 있어.` });
@@ -57,7 +64,7 @@ export async function GET() {
     updatedAt: new Date().toISOString(),
     externalCallMade: false,
     paidUsageTriggered: false,
-    priority: recentErrors.length ? "ERROR" : "NORMAL",
+    priority: recentErrors.length || uncertainProviderCalls ? "ERROR" : "NORMAL",
     summary: {
       characters: characters.length,
       jobs: jobs.length,
@@ -67,6 +74,12 @@ export async function GET() {
       recentErrors: recentErrors.length,
       publishAudit: publishAudit.length,
       factoryRuns: factoryRuns.length,
+      providerQueue: providerQueue.total,
+      providerRunning: providerQueue.running,
+      providerErrors: providerQueue.errors,
+      providerAudit: providerAudit.length,
+      providerExternalCalls: providerAudit.filter((item) => item.externalCallMade).length,
+      providerUncertainCalls: uncertainProviderCalls,
       publishBlocked: publishBlocked.length,
       retentionAttention,
       configuredProviders: configured.map((item) => item.id),

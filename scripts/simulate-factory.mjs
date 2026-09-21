@@ -70,6 +70,8 @@ try {
   assert(plan.body.progress?.total === 7, "factory plan milestones missing");
   assert(plan.body.realExecutionEnabled === false && plan.body.realPublishEnabled === false, "factory plan safety switches must stay disabled");
 
+  const initialProviderOps = await request("/api/provider-ops");
+  assert(initialProviderOps.status === 200, "initial provider ops summary failed");
   const plannedWork = await request("/api/provider-work", {
     method: "POST",
     body: JSON.stringify({ task: "research", prompt: "__sim_provider_work__" }),
@@ -78,6 +80,11 @@ try {
   assert(plannedWork.body.externalCallMade === false && plannedWork.body.paidUsageTriggered === false, "provider work planning must stay zero-cost");
   const workQueue = await request("/api/provider-work");
   assert(workQueue.status === 200 && workQueue.body.items.some((item) => item.id === plannedWork.body.item.id), "provider work queue did not persist planned item");
+  const queueRun = await request("/api/provider-queue-run", { method: "POST", body: JSON.stringify({ limit: 1 }) });
+  assert(queueRun.status === 200 && queueRun.body.count === 1 && queueRun.body.results[0].id === plannedWork.body.item.id, "provider queue did not dispatch planned work");
+  assert(queueRun.body.results[0].status === "DRY_RUN" && queueRun.body.externalCallMade === false && queueRun.body.paidUsageTriggered === false, "queue dry-run must remain zero-cost");
+  const queueAfter = await request("/api/provider-work");
+  assert(queueAfter.body.items.find((item) => item.id === plannedWork.body.item.id)?.status === "COMPLETED", "queue completion did not persist");
 
   const dispatchDry = await request("/api/provider-dispatch", {
     method: "POST",
@@ -96,6 +103,11 @@ try {
   const providerOps = await request("/api/provider-ops");
   assert(providerOps.status === 200 && providerOps.body.ok, "provider ops summary failed");
   assert(providerOps.body.externalCallMade === false && providerOps.body.paidUsageTriggered === false, "provider ops summary must stay zero-cost");
+  assert(providerOps.body.queue.completed >= initialProviderOps.body.queue.completed + 1 && providerOps.body.audit.total >= initialProviderOps.body.audit.total + 1, "queue and audit summary did not update");
+  assert(providerOps.body.audit.externalCalls === initialProviderOps.body.audit.externalCalls, "dry-run must not be audited as an external call");
+  const widgetAfterQueue = await request("/api/widget-status");
+  assert(widgetAfterQueue.body.summary.providerQueue >= 1 && widgetAfterQueue.body.summary.providerAudit >= 1, "widget provider summary missing");
+  assert(widgetAfterQueue.body.summary.providerExternalCalls === providerOps.body.audit.externalCalls, "widget external-call summary differs from audit");
 
   const dispatchBatch = await request("/api/provider-dispatch-batch", {
     method: "POST",

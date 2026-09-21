@@ -22,7 +22,7 @@ type Integrity = {
   issues: Array<{ type: string; id: string; message: string }>;
 };
 
-type ProviderOps = { realExecutionEnabled:boolean; providers:Array<{id:string;name:string;configured:boolean;executionImplemented:boolean;executableNow:boolean}>; queue:{total:number;planned:number;blocked:number;completed:number;errors:number;byProvider:Record<string,number>} };
+type ProviderOps = { realExecutionEnabled:boolean; providers:Array<{id:string;name:string;configured:boolean;executionImplemented:boolean;executableNow:boolean}>; queue:{total:number;planned:number;running:number;blocked:number;completed:number;errors:number;byProvider:Record<string,number>}; audit:{total:number;externalCalls:number;uncertainCalls:number;errors:number;last:string|null} };
 type WidgetStatus = {
   priority: string;
   summary: {
@@ -134,7 +134,8 @@ export default function LiveControlCenter() {
       <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4">
         <div className="flex items-center justify-between"><p className="text-xs uppercase tracking-wider text-zinc-500">AI Work Distribution</p><span className="text-xs text-zinc-500">{providerOps?.realExecutionEnabled ? "REAL ENABLED" : "DRY-RUN LOCK"}</span></div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">{(providerOps?.providers ?? []).map((p)=><div key={p.id} className="rounded-lg border border-white/10 p-3 text-sm"><div className="flex justify-between"><span>{p.name}</span><span className={p.executableNow?"text-emerald-400":"text-amber-400"}>{p.executableNow?"READY":p.configured?"ADAPTER WAIT":"NO KEY"}</span></div><p className="mt-1 text-xs text-zinc-600">assigned {providerOps?.queue.byProvider?.[p.id] ?? 0}</p></div>)}</div>
-        <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500"><span>Queue {providerOps?.queue.total ?? 0}</span><span>Planned {providerOps?.queue.planned ?? 0}</span><span>Blocked {providerOps?.queue.blocked ?? 0}</span><span>Done {providerOps?.queue.completed ?? 0}</span><span>Errors {providerOps?.queue.errors ?? 0}</span></div>
+        <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500"><span>Queue {providerOps?.queue.total ?? 0}</span><span>Planned {providerOps?.queue.planned ?? 0}</span><span>Running {providerOps?.queue.running ?? 0}</span><span>Blocked {providerOps?.queue.blocked ?? 0}</span><span>Done {providerOps?.queue.completed ?? 0}</span><span>Errors {providerOps?.queue.errors ?? 0}</span></div>
+        <div className="mt-2 flex flex-wrap gap-4 text-xs text-zinc-500"><span>Dispatch audit {providerOps?.audit.total ?? 0}</span><span>External calls {providerOps?.audit.externalCalls ?? 0}</span><span>Uncertain calls {providerOps?.audit.uncertainCalls ?? 0}</span><span>Audit errors {providerOps?.audit.errors ?? 0}</span><span>Last dispatch {providerOps?.audit.last ?? "none"}</span></div>
       </div>
       <div className="mt-5 flex flex-wrap gap-3">
         <a href="/api/local-backup" className="rounded-lg border border-cyan-500/30 px-4 py-2 text-sm text-cyan-300">Backup JSON</a>

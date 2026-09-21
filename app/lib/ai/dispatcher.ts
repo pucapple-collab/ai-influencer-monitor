@@ -48,6 +48,8 @@ export async function dispatchFactoryTask(input:{task:FactoryTaskKind;prompt:str
       // Never fallback after an ambiguous/queued external submission.
       if(r.executed) break;
     } catch (error) {
+      // A transport failure may happen after submission; report possible usage conservatively.
+      externalCallMade = true;
       lastError=error instanceof Error ? `${provider}: ${error.name === "AbortError" ? "request timeout" : error.message}` : `${provider} request failed.`;
       // A thrown transport error can be ambiguous after submission. Do not fallback and risk duplicate paid work.
       break;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { blockRemoteMutation } from "../../lib/local-api-guard";
 import { createCharacter, deleteCharacter, patchCharacter, readCharacters } from "../../lib/local-characters";
 import { deleteContentJobsForCharacter, readContentJobs } from "../../lib/local-content-jobs";
 
@@ -7,6 +8,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const blocked = blockRemoteMutation(request); if (blocked) return blocked;
   const body = await request.json();
   const name = String(body.name ?? "").trim();
   const concept = String(body.concept ?? "").trim();
@@ -15,6 +17,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const blocked = blockRemoteMutation(request); if (blocked) return blocked;
   const body = await request.json();
   const id = String(body.id ?? "").trim();
   if (!id) return NextResponse.json({ ok: false, error: "id required" }, { status: 400 });
@@ -31,6 +34,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const blocked = blockRemoteMutation(request); if (blocked) return blocked;
   const url = new URL(request.url);
   const id = url.searchParams.get("id") ?? "";
   const cascade = url.searchParams.get("cascade") === "true";
