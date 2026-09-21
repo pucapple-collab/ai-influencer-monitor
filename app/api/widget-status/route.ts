@@ -6,6 +6,7 @@ import { readContentJobs } from "../../lib/local-content-jobs";
 import { getExecutions } from "../../lib/ai/execution-store";
 import { readCharacters } from "../../lib/local-characters";
 import { getPublishAudit } from "../../lib/publish-audit";
+import { getFactoryRuns } from "../../lib/factory-run-store";
 
 async function readRuntime<T>(name: string): Promise<T | null> {
   try {
@@ -16,11 +17,12 @@ async function readRuntime<T>(name: string): Promise<T | null> {
 }
 
 export async function GET() {
-  const [jobs, executions, characters, publishAudit, validation] = await Promise.all([
+  const [jobs, executions, characters, publishAudit, factoryRuns, validation] = await Promise.all([
     readContentJobs(),
     getExecutions(),
     readCharacters(),
     getPublishAudit(),
+    getFactoryRuns(),
     readRuntime<{ ok?: boolean; validatedAt?: string; factorySimulation?: boolean }>("validation-status.json"),
   ]);
   const providers = getAIProviders();
@@ -38,6 +40,7 @@ export async function GET() {
   if (retentionAttention) messages.push({ kind: "guide", text: "로컬 감사기록이 보관 한도에 닿아서 오래된 기록부터 자동 정리 중이야." });
   if (validation?.ok && validation.factorySimulation) messages.push({ kind: "progress", text: "마지막 로컬 검증이랑 전체 시뮬레이션 통과했어." });
   messages.push({ kind: "progress", text: `캐릭터 ${characters.length}명, 콘텐츠 작업 ${jobs.length}건 관리 중이야.` });
+  if (factoryRuns.length) messages.push({ kind: "progress", text: `전체 Factory 시뮬레이션 기록 ${factoryRuns.length}건 쌓였어.` });
   if (review.length) messages.push({ kind: "guide", text: `리뷰 기다리는 콘텐츠 ${review.length}건 있어.` });
   if (publishBlocked.length) messages.push({ kind: "guide", text: `게시 게이트에서 막힌 기록 ${publishBlocked.length}건 있어. 아직 외부 게시 호출은 안 나갔어.` });
   if (ready.length) messages.push({ kind: "guide", text: `승인 끝나고 생성 대기 중인 작업 ${ready.length}건 있어.` });
@@ -60,6 +63,7 @@ export async function GET() {
       review: review.length,
       errors: errors.length,
       publishAudit: publishAudit.length,
+      factoryRuns: factoryRuns.length,
       publishBlocked: publishBlocked.length,
       retentionAttention,
       configuredProviders: configured.map((item) => item.id),
