@@ -3,6 +3,7 @@ import crypto from "crypto";
 import {
   readContentJobs,
   mutateContentJobs,
+  patchContentJob,
   type LocalContentJob,
 } from "../../lib/local-content-jobs";
 
@@ -47,19 +48,12 @@ export async function PATCH(request: NextRequest) {
   if (["generating", "review", "published"].includes(requestedStatus) && approval !== "approved")
     return NextResponse.json({ ok: false, error: "Approval required before generation." }, { status: 409 });
 
-  jobs[index] = {
-    ...jobs[index],
+  const updated = await patchContentJob(jobId, {
     status: requestedStatus,
     type: String(body.type ?? jobs[index].type),
     script: String(body.script ?? jobs[index].script ?? ""),
     prompt: String(body.prompt ?? jobs[index].prompt ?? ""),
     approval,
-  };
-  const updated = await mutateContentJobs((current) => {
-    const currentIndex = current.findIndex((job) => job.id === jobId);
-    if (currentIndex < 0) return null;
-    current[currentIndex] = { ...current[currentIndex], ...jobs[index], id: current[currentIndex].id };
-    return current[currentIndex];
   });
   if (!updated) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true, job: updated });
