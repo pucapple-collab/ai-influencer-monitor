@@ -15,6 +15,11 @@ function assert(value, message) {
 
 const createdIds = [];
 try {
+  const activation = await request("/api/activation-status");
+  assert(activation.status === 200 && activation.body.ok, "activation status failed");
+  assert(activation.body.externalCallMade === false && activation.body.paidUsageTriggered === false, "activation status must be zero-cost");
+  assert(activation.body.realExecutionEnabled === false && activation.body.realPublishEnabled === false, "activation safety switches must stay disabled during validation");
+
   const readiness = await request("/api/production-readiness");
   assert(readiness.status === 200 && readiness.body.ok, "production readiness failed");
   assert(readiness.body.externalCallMade === false && readiness.body.paidUsageTriggered === false, "production readiness must be zero-cost");
