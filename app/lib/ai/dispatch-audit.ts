@@ -7,3 +7,4 @@ let q:Promise<void>=Promise.resolve();
 async function read(){try{const v=JSON.parse(await fs.readFile(file,"utf8"));return Array.isArray(v)?v as ProviderAudit[]:[];}catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT")return[];throw e;}}
 export async function appendProviderAudit(entry:Omit<ProviderAudit,"id"|"createdAt">){const item={...entry,id:randomUUID(),createdAt:new Date().toISOString()};const run=q.then(async()=>{const a=await read();a.unshift(item);if(a.length>MAX)a.length=MAX;await fs.mkdir(path.dirname(file),{recursive:true});const tmp=file+"."+process.pid+"."+randomUUID()+".tmp";await fs.writeFile(tmp,JSON.stringify(a,null,2)+"\n",{mode:0o600});await fs.rename(tmp,file);});q=run.then(()=>undefined,()=>undefined);await run;return item;}
 export async function getProviderAudit(){await q;return read();}
+// Audit entries intentionally exclude prompts and credentials; only execution metadata is persisted.
