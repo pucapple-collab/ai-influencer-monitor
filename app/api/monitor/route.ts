@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { PROJECT_STATUS_ID } from "../../lib/project-status";
-import { supabase } from "../../lib/supabase";
+import { supabase, supabaseConfigured } from "../../lib/supabase";
 import { getAIProviders } from "../../lib/ai/providers";
 import { getExecutions } from "../../lib/ai/execution-store";
 
@@ -17,6 +17,15 @@ async function readRuntimeJson<T>(name: string, fallback: T): Promise<T> {
 
 export async function GET() {
   try {
+    if (!supabaseConfigured) {
+      return NextResponse.json({
+        ok: false,
+        status: "CONFIG_REQUIRED",
+        timestamp: new Date().toISOString(),
+        externalCallMade: false,
+        error: "Supabase environment variables are not configured for this deployment.",
+      }, { status: 503 });
+    }
     const [servicesResult, tasksResult] = await Promise.all([
       supabase
         .from("services")
