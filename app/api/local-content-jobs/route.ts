@@ -48,13 +48,14 @@ export async function PATCH(request: NextRequest) {
   if (["generating", "review", "published"].includes(requestedStatus) && approval !== "approved")
     return NextResponse.json({ ok: false, error: "Approval required before generation." }, { status: 409 });
 
-  const updated = await patchContentJob(jobId, {
-    status: requestedStatus,
-    type: String(body.type ?? jobs[index].type),
-    script: String(body.script ?? jobs[index].script ?? ""),
-    prompt: String(body.prompt ?? jobs[index].prompt ?? ""),
-    approval,
-  });
+  const patch: Partial<LocalContentJob> = {};
+  if (body.status !== undefined) patch.status = requestedStatus;
+  if (body.type !== undefined) patch.type = String(body.type);
+  if (body.script !== undefined) patch.script = String(body.script);
+  if (body.prompt !== undefined) patch.prompt = String(body.prompt);
+  if (body.approval !== undefined) patch.approval = approval;
+
+  const updated = await patchContentJob(jobId, patch);
   if (!updated) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true, job: updated });
 }
