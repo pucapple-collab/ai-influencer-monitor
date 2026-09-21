@@ -27,6 +27,10 @@ async function readRaw(): Promise<AgentLogEntry[]> {
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    if (error instanceof SyntaxError) {
+      await fs.rename(file, file + ".corrupt." + Date.now()).catch(() => {});
+      return [];
+    }
     throw error;
   }
 }
