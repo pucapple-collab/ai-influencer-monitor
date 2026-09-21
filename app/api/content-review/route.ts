@@ -20,7 +20,6 @@ export async function POST(request: NextRequest) {
       reviewNote:note,
       reviewedAt:now,
       status:decision==="approved"?"review":"ready",
-      reviewDecision:decision as "approved"|"rejected",
       generationError:decision==="rejected"?"Review rejected. Revise before regenerating.":"",
     });
     return NextResponse.json({ok:true,job:updated,publishReady:decision==="approved"});
