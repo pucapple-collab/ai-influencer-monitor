@@ -14,5 +14,6 @@ contextBridge.exposeInMainWorld('electronDrag', {
 
 contextBridge.exposeInMainWorld("monitor", {
   get: () => ipcRenderer.invoke("monitor:get"),
+  getWidgetStatus: () => ipcRenderer.invoke("widget-status:get"),
   copy: (text) => ipcRenderer.invoke("monitor:copy", text),
 });

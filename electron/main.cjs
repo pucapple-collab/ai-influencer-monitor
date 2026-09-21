@@ -202,6 +202,22 @@ ipcMain.handle("monitor:get", async () => {
   }
 });
 
+ipcMain.handle("widget-status:get", async () => {
+  try {
+    const response = await fetch("http://localhost:3000/api/widget-status", { cache: "no-store" });
+    if (!response.ok) throw new Error(`Widget status HTTP ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    return {
+      ok: false,
+      updatedAt: new Date().toISOString(),
+      priority: "ERROR",
+      messages: [{ kind: "error", text: "상태 서버 연결 확인 중이야. 대시보드 실행 상태부터 볼게." }],
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+});
+
 ipcMain.handle("monitor:copy", (_event, text) => {
   clipboard.writeText(String(text ?? ""));
   return true;

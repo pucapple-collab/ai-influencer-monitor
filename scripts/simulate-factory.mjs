@@ -15,6 +15,23 @@ function assert(value, message) {
 
 const createdIds = [];
 try {
+  const widgetStatus = await request("/api/widget-status");
+  assert(widgetStatus.status === 200 && widgetStatus.body.ok, "widget status failed");
+  assert(widgetStatus.body.externalCallMade === false && widgetStatus.body.paidUsageTriggered === false, "widget status must stay zero-cost");
+  assert(Array.isArray(widgetStatus.body.messages) && widgetStatus.body.messages.length > 0, "widget status messages missing");
+
+  const concurrentCharacters = await Promise.all(
+    Array.from({ length: 6 }, (_, index) => request("/api/local-characters", {
+      method: "POST",
+      body: JSON.stringify({ name: `__sim_character_${index}__`, concept: "concurrency test" }),
+    }))
+  );
+  const characterList = await request("/api/local-characters");
+  for (const response of concurrentCharacters) {
+    assert(response.status === 200 && response.body.character?.id, "concurrent character creation failed");
+    assert(characterList.body.characters.some((item) => item.id === response.body.character.id), "concurrent character mutation was lost");
+  }
+
   const activation = await request("/api/activation-status");
   assert(activation.status === 200 && activation.body.ok, "activation status failed");
   assert(activation.body.externalCallMade === false && activation.body.paidUsageTriggered === false, "activation status must be zero-cost");

@@ -253,6 +253,9 @@
     const closeButton = document.getElementById("closeButton");
 
     let latestReport = "";
+    let guideMessages = [];
+    let guideIndex = 0;
+    let guideSignature = "";
 
     function setBubble(status, message, detail, isError = false) {
       bubbleStatus.textContent = status;
@@ -294,6 +297,32 @@
     }
 
     copyButton.addEventListener("click", copyReport);
+
+    function showGuideMessage() {
+      if (!guideMessages.length || panel.classList.contains("open")) return;
+      const item = guideMessages[guideIndex % guideMessages.length];
+      guideIndex += 1;
+      const label = item.kind === "error" ? "CHECK" : item.kind === "next" ? "NEXT" : item.kind === "guide" ? "GUIDE" : "PROGRESS";
+      setBubble(label, item.text, "상태 기반 자동 업데이트", item.kind === "error");
+    }
+
+    async function loadGuideStatus() {
+      try {
+        if (!window.monitor?.getWidgetStatus) return;
+        const data = await window.monitor.getWidgetStatus();
+        const nextMessages = Array.isArray(data?.messages) ? data.messages : [];
+        if (!nextMessages.length) return;
+        const signature = JSON.stringify(nextMessages);
+        if (signature !== guideSignature) {
+          guideSignature = signature;
+          guideMessages = nextMessages;
+          guideIndex = 0;
+          showGuideMessage();
+        }
+      } catch (error) {
+        console.error("Guide status load failed:", error);
+      }
+    }
 
     async function loadSystemStatus() {
       try {
@@ -486,9 +515,12 @@
     });
 
     loadSystemStatus();
+    loadGuideStatus();
     loadCharacterConfig();
 
     setInterval(loadSystemStatus, 10000);
+    setInterval(loadGuideStatus, 10000);
+    setInterval(showGuideMessage, 7000);
   </script>
 
 <script>
