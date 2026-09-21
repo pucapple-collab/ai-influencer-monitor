@@ -28,6 +28,11 @@ async function readUnlocked(): Promise<LocalContentJob[]> {
     return JSON.parse(await fs.readFile(file, "utf8"));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    if (error instanceof SyntaxError) {
+      const corrupt = file + ".corrupt." + Date.now();
+      await fs.rename(file, corrupt).catch(() => {});
+      return [];
+    }
     throw error;
   }
 }
@@ -36,7 +41,7 @@ async function writeUnlocked(data: LocalContentJob[]) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   const temp = `${file}.${process.pid}.${randomUUID()}.tmp`;
   try {
-    await fs.writeFile(temp, JSON.stringify(data, null, 2) + "\\n", { mode: 0o600 });
+    await fs.writeFile(temp, JSON.stringify(data, null, 2) + "\n", { mode: 0o600 });
     await fs.rename(temp, file);
   } finally {
     await fs.rm(temp, { force: true }).catch(() => {});
