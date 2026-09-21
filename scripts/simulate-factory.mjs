@@ -92,6 +92,22 @@ try {
   assert(dispatchRealBlocked.status === 409 && dispatchRealBlocked.body.status === "BLOCKED", "provider dispatcher real-call safety gate failed");
   assert(dispatchRealBlocked.body.externalCallMade === false, "blocked provider dispatch made external call");
 
+  const providerOps = await request("/api/provider-ops");
+  assert(providerOps.status === 200 && providerOps.body.ok, "provider ops summary failed");
+  assert(providerOps.body.externalCallMade === false && providerOps.body.paidUsageTriggered === false, "provider ops summary must stay zero-cost");
+
+  const dispatchBatch = await request("/api/provider-dispatch-batch", {
+    method: "POST",
+    body: JSON.stringify({ jobs: [
+      { task: "coding", prompt: "batch-code-test" },
+      { task: "research", prompt: "batch-research-test" },
+      { task: "bulk", prompt: "batch-bulk-test" }
+    ] }),
+  });
+  assert(dispatchBatch.status === 200 && dispatchBatch.body.count === 3, "provider batch dispatch failed");
+  assert(dispatchBatch.body.externalCallMade === false && dispatchBatch.body.paidUsageTriggered === false, "provider batch dispatch must stay zero-cost");
+  assert(dispatchBatch.body.results.every((item) => item.status === "DRY_RUN"), "provider batch must default to dry-run");
+
   const preflight = await request("/api/ai-preflight");
   assert(preflight.status === 200 && preflight.body.ok, "AI preflight failed");
   assert(preflight.body.externalCallMade === false, "preflight must not call providers");
