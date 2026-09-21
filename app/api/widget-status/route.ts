@@ -7,6 +7,8 @@ import { getExecutions } from "../../lib/ai/execution-store";
 import { readCharacters } from "../../lib/local-characters";
 import { getPublishAudit } from "../../lib/publish-audit";
 import { getFactoryRuns } from "../../lib/factory-run-store";
+import { getProviderWorkSummary } from "../../lib/ai/work-queue";
+import { getProviderAudit } from "../../lib/ai/dispatch-audit";
 
 async function readRuntime<T>(name: string): Promise<T | null> {
   try {
@@ -17,13 +19,15 @@ async function readRuntime<T>(name: string): Promise<T | null> {
 }
 
 export async function GET() {
-  const [jobs, executions, characters, publishAudit, factoryRuns, validation] = await Promise.all([
+  const [jobs, executions, characters, publishAudit, factoryRuns, validation, providerQueue, providerAudit] = await Promise.all([
     readContentJobs(),
     getExecutions(),
     readCharacters(),
     getPublishAudit(),
     getFactoryRuns(),
     readRuntime<{ ok?: boolean; validatedAt?: string; factorySimulation?: boolean }>("validation-status.json"),
+    getProviderWorkSummary(),
+    getProviderAudit(),
   ]);
   const providers = getAIProviders();
   const configured = providers.filter((provider) => provider.keyConfigured);
@@ -70,6 +74,9 @@ export async function GET() {
       publishBlocked: publishBlocked.length,
       retentionAttention,
       configuredProviders: configured.map((item) => item.id),
+      providerQueue,
+      providerExternalCalls: providerAudit.filter((item) => item.externalCallMade).length,
+      providerPaidCalls: providerAudit.filter((item) => item.paidUsageTriggered).length,
       realExecutionEnabled,
       realPublishEnabled,
       lastValidatedAt: validation?.validatedAt ?? null,
