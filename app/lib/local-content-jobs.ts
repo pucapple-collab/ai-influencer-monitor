@@ -1,7 +1,9 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { randomUUID } from "crypto";
 
 const file = path.join(process.cwd(), "runtime", "content-jobs.json");
+let mutationQueue: Promise<void> = Promise.resolve();
 
 export type LocalContentJob = {
   id: string;
@@ -17,7 +19,7 @@ export type LocalContentJob = {
   generationError?: string;
 };
 
-export async function readContentJobs(): Promise<LocalContentJob[]> {
+async function readUnlocked(): Promise<LocalContentJob[]> {
   try {
     return JSON.parse(await fs.readFile(file, "utf8"));
   } catch (error) {
@@ -26,11 +28,39 @@ export async function readContentJobs(): Promise<LocalContentJob[]> {
   }
 }
 
-export async function writeContentJobs(data: LocalContentJob[]) {
+async function writeUnlocked(data: LocalContentJob[]) {
   await fs.mkdir(path.dirname(file), { recursive: true });
-  const temp = file + ".tmp";
-  await fs.writeFile(temp, JSON.stringify(data, null, 2) + "\n", { mode: 0o600 });
-  await fs.rename(temp, file);
+  const temp = `${file}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    await fs.writeFile(temp, JSON.stringify(data, null, 2) + "\n", { mode: 0o600 });
+    await fs.rename(temp, file);
+  } finally {
+    await fs.rm(temp, { force: true }).catch(() => {});
+  }
+}
+
+function withMutationLock<T>(operation: () => Promise<T>): Promise<T> {
+  const result = mutationQueue.then(operation, operation);
+  mutationQueue = result.then(() => undefined, () => undefined);
+  return result;
+}
+
+export async function readContentJobs(): Promise<LocalContentJob[]> {
+  await mutationQueue;
+  return readUnlocked();
+}
+
+export async function writeContentJobs(data: LocalContentJob[]) {
+  return withMutationLock(() => writeUnlocked(data));
+}
+
+export async function mutateContentJobs<T>(mutation: (jobs: LocalContentJob[]) => T | Promise<T>): Promise<T> {
+  return withMutationLock(async () => {
+    const jobs = await readUnlocked();
+    const result = await mutation(jobs);
+    await writeUnlocked(jobs);
+    return result;
+  });
 }
 
 export async function getContentJob(id: string) {
@@ -38,10 +68,10 @@ export async function getContentJob(id: string) {
 }
 
 export async function patchContentJob(id: string, patch: Partial<LocalContentJob>): Promise<LocalContentJob | null> {
-  const jobs = await readContentJobs();
-  const index = jobs.findIndex((job) => job.id === id);
-  if (index < 0) return null;
-  jobs[index] = { ...jobs[index], ...patch, id: jobs[index].id };
-  await writeContentJobs(jobs);
-  return jobs[index];
+  return mutateContentJobs((jobs) => {
+    const index = jobs.findIndex((job) => job.id === id);
+    if (index < 0) return null;
+    jobs[index] = { ...jobs[index], ...patch, id: jobs[index].id };
+    return jobs[index];
+  });
 }
