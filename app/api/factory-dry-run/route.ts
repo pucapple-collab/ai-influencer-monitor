@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getContentJob } from "../../lib/local-content-jobs";
+import { getContentJob, patchContentJob } from "../../lib/local-content-jobs";
 import { simulateFactoryPipeline } from "../../lib/ai/factory-pipeline";
+import { saveFactoryRun } from "../../lib/factory-run-store";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +17,15 @@ export async function POST(request: NextRequest) {
 
     const prompt = String(body.prompt ?? job.prompt ?? job.script ?? "").trim();
     const result = simulateFactoryPipeline(prompt);
-    return NextResponse.json({ ok: true, jobId, ...result });
+    const run = await saveFactoryRun({ jobId, mode: "DRY_RUN", status: "COMPLETED", stages: result.stages, externalCallMade: false, actualCost: 0 });
+    const updatedJob = await patchContentJob(jobId, {
+      status: "review",
+      generationResult: JSON.stringify({ factoryRunId: run.id, stages: result.stages.map((stage) => ({ id: stage.id, provider: stage.provider, output: stage.output })) }),
+      generationError: "",
+    });
+    if (!updatedJob) throw new Error("Content job disappeared while saving factory result.");
+
+    return NextResponse.json({ ok: true, jobId, runId: run.id, jobStatus: updatedJob.status, ...result });
   } catch (error) {
     return NextResponse.json({ ok: false, externalCallMade: false, actualCost: 0, error: error instanceof Error ? error.message : "Factory dry-run failed." }, { status: 400 });
   }

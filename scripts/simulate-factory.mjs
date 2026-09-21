@@ -116,20 +116,33 @@ try {
   });
   assert(blocked.status === 409 && blocked.body.status === "BLOCKED", "approval gate failed");
 
+  const factoryId = await create("__sim_factory__");
+  const factoryReady = await request("/api/local-content-jobs", {
+    method: "PATCH",
+    body: JSON.stringify({ id: factoryId, approval: "approved", status: "ready", prompt: "factory-test" }),
+  });
+  assert(factoryReady.status === 200, "factory job ready transition failed");
+
+  const factory = await request("/api/factory-dry-run", {
+    method: "POST",
+    body: JSON.stringify({ jobId: factoryId }),
+  });
+  assert(factory.status === 200 && factory.body.mode === "DRY_RUN", "factory orchestration dry-run failed");
+  assert(factory.body.stages?.length === 3, "factory orchestration must contain 3 stages");
+  assert(factory.body.externalCallMade === false && factory.body.actualCost === 0, "factory orchestration must be zero-cost");
+  assert(factory.body.runId && factory.body.jobStatus === "review", "factory dry-run must persist history and move job to review");
+
+  const factoryRuns = await request("/api/factory-runs");
+  assert(factoryRuns.status === 200 && factoryRuns.body.ok, "factory run history failed");
+  assert(factoryRuns.body.externalCallMade === false && factoryRuns.body.paidUsageTriggered === false, "factory history must stay zero-cost");
+  assert(factoryRuns.body.runs.some((run) => run.id === factory.body.runId && run.jobId === factoryId), "factory run missing from history");
+
   const successId = await create("__sim_success__");
   const ready = await request("/api/local-content-jobs", {
     method: "PATCH",
     body: JSON.stringify({ id: successId, approval: "approved", status: "ready", prompt: "test" }),
   });
   assert(ready.status === 200, "job ready transition failed");
-
-  const factory = await request("/api/factory-dry-run", {
-    method: "POST",
-    body: JSON.stringify({ jobId: successId }),
-  });
-  assert(factory.status === 200 && factory.body.mode === "DRY_RUN", "factory orchestration dry-run failed");
-  assert(factory.body.stages?.length === 3, "factory orchestration must contain 3 stages");
-  assert(factory.body.externalCallMade === false && factory.body.actualCost === 0, "factory orchestration must be zero-cost");
 
   const dry = await request("/api/ai-run", {
     method: "POST",
