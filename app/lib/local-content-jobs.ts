@@ -16,8 +16,7 @@ export type LocalContentJob = {
   prompt?: string;
   approval?: string;
   generationResult?: string;
-  generationError?: string;
-};
+  generationError?: string;\n  reviewDecision?: "pending" | "approved" | "rejected";\n  reviewNote?: string;\n  reviewedAt?: string;\n  publishedAt?: string;\n};
 
 async function readUnlocked(): Promise<LocalContentJob[]> {
   try {
