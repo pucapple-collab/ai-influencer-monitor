@@ -198,6 +198,31 @@ try {
   assert(dry.body.externalCallMade === false, "dry run made external call");
   assert(dry.body.execution?.actualCost === 0, "dry run cost must be zero");
 
+  const rejectedReview = await request("/api/content-review", {
+    method: "POST",
+    body: JSON.stringify({ jobId: successId, decision: "rejected", note: "simulation revision" }),
+  });
+  assert(rejectedReview.status === 200 && rejectedReview.body.job?.status === "ready", "review rejection must return job to ready");
+
+  const regenerated = await request("/api/ai-run", {
+    method: "POST",
+    body: JSON.stringify({ provider: "gemini", jobId: successId, mode: "dry_run" }),
+  });
+  assert(regenerated.status === 200 && regenerated.body.status === "COMPLETED", "rejected job regeneration failed");
+
+  const approvedReview = await request("/api/content-review", {
+    method: "POST",
+    body: JSON.stringify({ jobId: successId, decision: "approved", note: "simulation approved" }),
+  });
+  assert(approvedReview.status === 200 && approvedReview.body.publishReady === true, "review approval did not become publish-ready");
+
+  const publishPreflight = await request("/api/content-publish", {
+    method: "POST",
+    body: JSON.stringify({ jobId: successId }),
+  });
+  assert(publishPreflight.status === 200 && publishPreflight.body.status === "READY_TO_PUBLISH", "content publish preflight failed");
+  assert(publishPreflight.body.externalCallMade === false, "publish preflight made an external call");
+
   const replay = await request("/api/ai-run", {
     method: "POST",
     body: JSON.stringify({ provider: "gemini", jobId: successId, mode: "dry_run" }),
