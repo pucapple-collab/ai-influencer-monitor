@@ -22,6 +22,12 @@ type Integrity = {
   issues: Array<{ type: string; id: string; message: string }>;
 };
 
+type ProviderOps = {
+  realExecutionEnabled: boolean;
+  providers: Array<{ id:string; name:string; configured:boolean; executionImplemented:boolean; executableNow:boolean }>;
+  queue: { total:number; planned:number; blocked:number; completed:number; errors:number; byProvider:Record<string,number> };
+};
+
 type WidgetStatus = {
   priority: string;
   summary: {
@@ -39,26 +45,29 @@ export default function LiveControlCenter() {
   const [health, setHealth] = useState<RuntimeHealth | null>(null);
   const [integrity, setIntegrity] = useState<Integrity | null>(null);
   const [widget, setWidget] = useState<WidgetStatus | null>(null);
+  const [providerOps, setProviderOps] = useState<ProviderOps | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
     async function refresh() {
       try {
-        const [planResponse, healthResponse, integrityResponse, widgetResponse] = await Promise.all([
+        const [planResponse, healthResponse, integrityResponse, widgetResponse, providerOpsResponse] = await Promise.all([
           fetch("/api/factory-plan", { cache: "no-store" }),
           fetch("/api/runtime-health", { cache: "no-store" }),
           fetch("/api/data-integrity", { cache: "no-store" }),
           fetch("/api/widget-status", { cache: "no-store" }),
+          fetch("/api/provider-ops", { cache: "no-store" }),
         ]);
-        const [nextPlan, nextHealth, nextIntegrity, nextWidget] = await Promise.all([
-          planResponse.json(), healthResponse.json(), integrityResponse.json(), widgetResponse.json(),
+        const [nextPlan, nextHealth, nextIntegrity, nextWidget, nextProviderOps] = await Promise.all([
+          planResponse.json(), healthResponse.json(), integrityResponse.json(), widgetResponse.json(), providerOpsResponse.json(),
         ]);
         if (!active) return;
         setPlan(nextPlan);
         setHealth(nextHealth);
         setIntegrity(nextIntegrity);
         setWidget(nextWidget);
+        setProviderOps(nextProviderOps);
         setError("");
       } catch (reason) {
         if (active) setError(reason instanceof Error ? reason.message : "Live control status failed.");
@@ -124,6 +133,24 @@ export default function LiveControlCenter() {
             <p>Runtime data: {health ? `${Math.round(health.storage.totalBytes / 1024)} KB` : "..."}</p>
             <p>Last local validation: {widget?.summary.lastValidatedAt ?? "아직 기록 없음"}</p>
           </div>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs uppercase tracking-wider text-zinc-500">AI Work Distribution</p>
+          <span className="text-xs text-zinc-500">{providerOps?.realExecutionEnabled ? "REAL ENABLED" : "DRY-RUN LOCK"}</span>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          {(providerOps?.providers ?? []).map((provider) => (
+            <div key={provider.id} className="rounded-lg border border-white/10 p-3 text-sm">
+              <div className="flex justify-between"><span>{provider.name}</span><span className={provider.executableNow ? "text-emerald-400" : "text-amber-400"}>{provider.executableNow ? "READY" : provider.configured ? "ADAPTER WAIT" : "NO KEY"}</span></div>
+              <p className="mt-1 text-xs text-zinc-600">assigned {providerOps?.queue.byProvider?.[provider.id] ?? 0}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500">
+          <span>Queue {providerOps?.queue.total ?? 0}</span><span>Planned {providerOps?.queue.planned ?? 0}</span><span>Blocked {providerOps?.queue.blocked ?? 0}</span><span>Done {providerOps?.queue.completed ?? 0}</span><span>Errors {providerOps?.queue.errors ?? 0}</span>
         </div>
       </div>
 
