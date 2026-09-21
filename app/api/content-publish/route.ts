@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { blockRemoteMutation } from "../../lib/local-api-guard";
-import { getContentJob, patchContentJob } from "../../lib/local-content-jobs";
+import { getContentJob } from "../../lib/local-content-jobs";
 
 export async function POST(request: NextRequest) {
   const blocked=blockRemoteMutation(request); if(blocked) return blocked;
