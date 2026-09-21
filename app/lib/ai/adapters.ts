@@ -1,5 +1,5 @@
 
-import { createHiggsfieldClient } from "@higgsfield/client/v2";
+import { config as configureHiggsfield, higgsfield } from "@higgsfield/client/v2";
 import { getHiggsfieldCredential, getProviderCredential } from "./providers";
 
 export type AIProviderId = "higgsfield" | "gemini" | "claude";
@@ -151,16 +151,8 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
       if (!credentials) return missing("higgsfield");
       const model = input.model || process.env.HIGGSFIELD_MODEL || "bytedance/seedance-2.5/text-to-video";
       try {
-        const client = createHiggsfieldClient({
-          credentials,
-          timeout: 120_000,
-          maxRetries: 3,
-          retryBackoff: 1_000,
-          retryMaxBackoff: 30_000,
-          pollInterval: 2_000,
-          maxPollTime: 300_000,
-        });
-        const result = await client.subscribe(model, {
+        configureHiggsfield({ credentials });
+        const result = await higgsfield.subscribe(model, {
           input: {
             prompt: input.prompt,
             duration: 5,
@@ -171,23 +163,29 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
           },
           withPolling: true,
         });
-        const job = result.jobs?.[0];
-        const url = job?.results?.raw?.url;
-        if (!result.isCompleted || !url) {
+        const payload = result as unknown as Record<string, unknown>;
+        const video = payload.video;
+        const url = typeof video === "string"
+          ? video
+          : video && typeof video === "object" && "url" in video
+            ? String((video as { url?: unknown }).url ?? "")
+            : "";
+        const requestId = String(payload.request_id ?? payload.requestId ?? "");
+        if (!url) {
           return {
             provider: "higgsfield",
             executed: true,
             status: "ERROR",
-            requestId: result.id,
+            requestId: requestId || undefined,
             estimatedCost: 0,
-            error: result.isNsfw ? "Higgsfield generation was blocked by safety checks." : "Higgsfield generation did not return a completed media URL.",
+            error: "Higgsfield completed without a video URL.",
           };
         }
         return {
           provider: "higgsfield",
           executed: true,
           status: "COMPLETED",
-          requestId: result.id,
+          requestId: requestId || undefined,
           estimatedCost: 0,
           output: url,
         };
