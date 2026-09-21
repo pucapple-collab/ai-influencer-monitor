@@ -39,7 +39,8 @@ try{
     crossReviewComplete:result.crossReviewComplete,
     externalCallMade:result.externalCallMade,
     paidUsageTriggered:result.paidUsageTriggered,
-    collaborationId:id,\n    providers:{claude:result.claude?.status,gemini:result.gemini?.status,claudeReview:result.claudeReview?.status,geminiReview:result.geminiReview?.status},
+    collaborationId:id,
+    providers:{claude:result.claude?.status,gemini:result.gemini?.status,claudeReview:result.claudeReview?.status,geminiReview:result.geminiReview?.status},
     evidence
   },null,2));
   if(!result.crossReviewComplete) process.exitCode=2;
