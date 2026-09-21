@@ -5,6 +5,9 @@ import { PROJECT_STATUS_ID } from "../../lib/project-status";
 import { supabase, supabaseConfigured } from "../../lib/supabase";
 import { getAIProviders } from "../../lib/ai/providers";
 import { getExecutions } from "../../lib/ai/execution-store";
+import { getProviderAudit } from "../../lib/ai/dispatch-audit";
+import { getProviderWorkSummary } from "../../lib/ai/work-queue";
+import { getPublishReadiness } from "../../lib/publish-adapters";
 
 async function readRuntimeJson<T>(name: string, fallback: T): Promise<T> {
   try {
@@ -138,7 +141,8 @@ export async function GET() {
       (provider) => provider.status === "NOT_CONNECTED"
     ).length;
 
-    const executions = await getExecutions();
+    const [executions, providerAudit, providerQueue] = await Promise.all([getExecutions(), getProviderAudit(), getProviderWorkSummary()]);
+    const publishReadiness = getPublishReadiness();
 
     const executionSummary = {
       total: executions.length,
@@ -218,7 +222,7 @@ export async function GET() {
         localContentJobCount: localOperations.contentJobs,
         approvedContentCount: localOperations.approvedContent,
         aiExecutionCost: executionSummary.actualCost,
-        paidServiceRequired: false,
+        paidServiceRequired: providerAudit.some((item) => item.paidUsageTriggered),
         aiConnectedCount,
         aiNotConnectedCount,
         aiExecutionCount: executionSummary.total,
@@ -240,6 +244,7 @@ export async function GET() {
         paidRequired: false,
         executions: executionSummary,
       },
+      runtime: { providerQueue, providerExternalCalls: providerAudit.filter((item) => item.externalCallMade).length, providerPaidCalls: providerAudit.filter((item) => item.paidUsageTriggered).length, publishReadiness },
       projectStatus,
       latestTask: pendingTasks[0] ?? blockedTasks[0] ?? null,
       services,
