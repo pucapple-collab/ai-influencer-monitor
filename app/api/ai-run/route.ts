@@ -8,11 +8,16 @@ import { getContentJob, patchContentJob } from "../../lib/local-content-jobs";
 import { runDrySimulation } from "../../lib/ai/simulation";
 
 export async function POST(request: NextRequest) {
+  let activeJobId = "";
+  let generationStarted = false;
+  let activeMode = "dry_run";
   try {
     const body = await request.json();
     const providerValue = String(body.provider ?? "").trim();
     const jobId = String(body.jobId ?? "").trim();
     const mode = String(body.mode ?? "dry_run").toLowerCase();
+    activeJobId = jobId;
+    activeMode = mode;
 
     if (!providerValue || !jobId)
       return NextResponse.json({ ok: false, executed: false, error: "provider, jobId가 필요합니다." }, { status: 400 });
@@ -40,32 +45,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, executed: false, status: "BLOCKED", error: "Prompt required." }, { status: 400 });
 
     await patchContentJob(jobId, { status: "generating", generationError: "" });
+    generationStarted = true;
 
     if (mode === "dry_run") {
       const result = await runDrySimulation(provider, prompt, Boolean(body.simulateFailure));
       if (result.status === "ERROR") {
         const saved = await saveExecution({ ...execution, status: "ERROR", error: result.error, completedAt: new Date().toISOString() });
         await patchContentJob(jobId, { status: "ready", generationError: result.error ?? "Simulation failed." });
+        generationStarted = false;
         return NextResponse.json({ ok: false, executed: false, paidRequired: false, execution: saved, ...result }, { status: 500 });
       }
       const saved = await saveExecution({ ...execution, status: "COMPLETED", executed: false, externalCallMade: false, completedAt: new Date().toISOString() });
       await patchContentJob(jobId, { status: "review", generationResult: result.output, generationError: "" });
+      generationStarted = false;
       return NextResponse.json({ ok: true, jobId, paidRequired: false, execution: saved, ...result });
     }
 
     if (process.env.FACTORY_REAL_EXECUTION_ENABLED !== "true") {
       await patchContentJob(jobId, { status: "ready" });
+      generationStarted = false;
       return NextResponse.json({ ok: false, executed: false, externalCallMade: false, status: "REAL_EXECUTION_DISABLED", paidRequired: false, jobId, provider, message: "실제 AI 호출은 서버 안전 스위치가 비활성화되어 있습니다." }, { status: 409 });
     }
 
     if (body.confirmExternalCall !== true) {
       await patchContentJob(jobId, { status: "ready" });
+      generationStarted = false;
       return NextResponse.json({ ok: false, executed: false, externalCallMade: false, status: "CONFIRMATION_REQUIRED", paidRequired: true, jobId, provider, message: "실제 외부 API 호출은 명시적 확인이 필요합니다." }, { status: 409 });
     }
 
     if (!canExecuteAI(provider)) {
       const saved = await saveExecution({ ...execution, status: "BLOCKED", error: "Provider is not connected." });
       await patchContentJob(jobId, { status: "ready" });
+      generationStarted = false;
       return NextResponse.json({ ok: false, executed: false, externalCallMade: false, paidRequired: false, status: "NOT_CONNECTED", jobId, provider, estimatedCost: 0, execution: saved, message: "Provider 연결이 없어 외부 API를 호출하지 않았습니다." }, { status: 409 });
     }
 
@@ -87,8 +98,22 @@ export async function POST(request: NextRequest) {
         ? { status: "ready", generationError: result.error ?? "AI execution failed." }
         : { status: "generating" });
 
+    generationStarted = false;
     return NextResponse.json({ ok: status !== "ERROR", jobId, paidRequired: result.executed, externalCallMade: result.executed, execution: saved, ...result });
   } catch (error) {
-    return NextResponse.json({ ok: false, executed: false, externalCallMade: false, estimatedCost: 0, error: error instanceof Error ? error.message : "AI execution failed." }, { status: 500 });
+    if (generationStarted && activeJobId) {
+      await patchContentJob(activeJobId, {
+        status: "ready",
+        generationError: error instanceof Error ? error.message : "AI execution failed.",
+      }).catch(() => null);
+    }
+    return NextResponse.json({
+      ok: false,
+      executed: false,
+      externalCallMade: activeMode === "dry_run" ? false : "unknown",
+      estimatedCost: 0,
+      recoveredToReady: generationStarted,
+      error: error instanceof Error ? error.message : "AI execution failed.",
+    }, { status: 500 });
   }
 }
