@@ -17,6 +17,10 @@ export type LocalContentJob = {
   approval?: string;
   generationResult?: string;
   generationError?: string;
+  reviewDecision?: "pending" | "approved" | "rejected";
+  reviewNote?: string;
+  reviewedAt?: string;
+  publishedAt?: string;
 };
 
 async function readUnlocked(): Promise<LocalContentJob[]> {
@@ -24,6 +28,11 @@ async function readUnlocked(): Promise<LocalContentJob[]> {
     return JSON.parse(await fs.readFile(file, "utf8"));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    if (error instanceof SyntaxError) {
+      const corrupt = file + ".corrupt." + Date.now();
+      await fs.rename(file, corrupt).catch(() => {});
+      return [];
+    }
     throw error;
   }
 }

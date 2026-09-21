@@ -36,8 +36,10 @@ export async function runDevelopmentCollaboration(input:CollaborationInput){
     const c=safe(claude.output||"No Claude result");
     const g=safe(gemini.output||"No Gemini result");
     // Reviews are real provider calls in real mode, not copied log labels.
-    geminiReview=await run("gemini","research",`Review Claude's proposed implementation. Identify concrete defects, missing tests, unsafe assumptions, and exact corrections. Do not repeat the proposal.\n\nCLAUDE RESULT:\n${c}`,real,confirmed,`${collaborationId}:gemini-review`);
-    claudeReview=await run("claude","coding",`Review Gemini's verification findings against the implementation goal. Resolve conflicts and return exact code/test changes worth adopting.\n\nGEMINI RESULT:\n${g}`,real,confirmed,`${collaborationId}:claude-review`);
+    [geminiReview,claudeReview]=await Promise.all([
+      run("gemini","research",`Review Claude's proposed implementation. Identify concrete defects, missing tests, unsafe assumptions, and exact corrections. Do not repeat the proposal.\n\nCLAUDE RESULT:\n${c}`,real,confirmed,`${collaborationId}:gemini-review`),
+      run("claude","coding",`Review Gemini's verification findings against the implementation goal. Resolve conflicts and return exact code/test changes worth adopting.\n\nGEMINI RESULT:\n${g}`,real,confirmed,`${collaborationId}:claude-review`)
+    ]);
 
     if(geminiReview.status==="COMPLETED") await appendAgentDevelopmentLog({agent:"gemini",relatedAgent:"claude",task:collaborationId,status:"REVIEW",summary:"Completed an actual provider review of Claude output."});
     if(claudeReview.status==="COMPLETED") await appendAgentDevelopmentLog({agent:"claude",relatedAgent:"gemini",task:collaborationId,status:"REVIEW",summary:"Completed an actual provider review of Gemini output."});
