@@ -23,8 +23,11 @@ const definitions: Array<{
     id: "higgsfield",
     name: "Higgsfield",
     role: "video",
-    envNames: ["HF_CREDENTIALS", "HF_KEY", "HIGGSFIELD_API_KEY"],
-    executionImplemented: false,
+    envNames: ["HF_CREDENTIALS", "HF_API_KEY_ID"],
+    executionImplemented: Boolean(
+      process.env.HF_CREDENTIALS ||
+      (process.env.HF_API_KEY_ID && process.env.HF_API_KEY_SECRET)
+    ),
   },
   {
     id: "gemini",
@@ -81,4 +84,11 @@ export function getAIProvider(id: string) {
 export function canExecuteAI(id: string) {
   const provider = getAIProvider(id);
   return provider?.status === "CONFIGURED" && provider.executionImplemented;
+}
+
+export function getHiggsfieldCredential() {
+  if (process.env.HF_CREDENTIALS) return process.env.HF_CREDENTIALS;
+  const id = process.env.HF_API_KEY_ID;
+  const secret = process.env.HF_API_KEY_SECRET;
+  return id && secret ? `${id}:${secret}` : undefined;
 }
