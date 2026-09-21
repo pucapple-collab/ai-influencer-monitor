@@ -36,6 +36,8 @@ try {
   assert(widgetStatus.body.externalCallMade === false && widgetStatus.body.paidUsageTriggered === false, "widget status must stay zero-cost");
   assert(Array.isArray(widgetStatus.body.messages) && widgetStatus.body.messages.length > 0, "widget status messages missing");
   assert(typeof widgetStatus.body.summary?.recentErrors === "number", "widget recent-error signal missing");
+  assert(typeof widgetStatus.body.summary?.providerQueue?.total === "number", "widget provider queue signal missing");
+  assert(typeof widgetStatus.body.summary?.providerPaidCalls === "number", "widget paid-call signal missing");
 
   const concurrentCharacters = await Promise.all(
     Array.from({ length: 6 }, (_, index) => request("/api/local-characters", {
@@ -96,6 +98,7 @@ try {
   const providerOps = await request("/api/provider-ops");
   assert(providerOps.status === 200 && providerOps.body.ok, "provider ops summary failed");
   assert(providerOps.body.externalCallMade === false && providerOps.body.paidUsageTriggered === false, "provider ops summary must stay zero-cost");
+  assert(typeof providerOps.body.audit?.paidCalls === "number", "provider ops paid-call metric missing");
 
   const dispatchBatch = await request("/api/provider-dispatch-batch", {
     method: "POST",
