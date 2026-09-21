@@ -8,6 +8,7 @@ export type AIProvider = {
   keyConfigured: boolean;
   envNames: string[];
   defaultModel?: string;
+  executionImplemented: boolean;
 };
 
 const definitions: Array<{
@@ -16,12 +17,14 @@ const definitions: Array<{
   role: AIProvider["role"];
   envNames: string[];
   defaultModel?: string;
+  executionImplemented: boolean;
 }> = [
   {
     id: "higgsfield",
     name: "Higgsfield",
     role: "video",
     envNames: ["HF_CREDENTIALS", "HF_KEY", "HIGGSFIELD_API_KEY"],
+    executionImplemented: false,
   },
   {
     id: "gemini",
@@ -29,6 +32,7 @@ const definitions: Array<{
     role: "llm",
     envNames: ["GEMINI_API_KEY"],
     defaultModel: "gemini-3.8-flash",
+    executionImplemented: true,
   },
   {
     id: "claude",
@@ -36,6 +40,7 @@ const definitions: Array<{
     role: "llm",
     envNames: ["ANTHROPIC_API_KEY"],
     defaultModel: "claude-opus-5",
+    executionImplemented: true,
   },
 ];
 
@@ -60,6 +65,7 @@ export function getAIProviders(): AIProvider[] {
       keyConfigured: configured,
       envNames: item.envNames,
       defaultModel: item.defaultModel,
+      executionImplemented: item.executionImplemented,
     };
   });
 }
@@ -73,5 +79,6 @@ export function getAIProvider(id: string) {
 }
 
 export function canExecuteAI(id: string) {
-  return getAIProvider(id)?.status === "CONFIGURED";
+  const provider = getAIProvider(id);
+  return provider?.status === "CONFIGURED" && provider.executionImplemented;
 }
