@@ -68,6 +68,14 @@ try {
     return r.body.job.id;
   };
 
+  const concurrentIds = await Promise.all(
+    Array.from({ length: 8 }, (_, index) => create(`__sim_concurrent_${index}__`))
+  );
+  const concurrentList = await request("/api/local-content-jobs");
+  for (const id of concurrentIds) {
+    assert(concurrentList.body.jobs.some((job) => job.id === id), "concurrent content mutation was lost");
+  }
+
   const blockedId = await create("__sim_blocked__");
   const blocked = await request("/api/ai-run", {
     method: "POST",
@@ -97,6 +105,13 @@ try {
   assert(dry.status === 200 && dry.body.status === "COMPLETED", "dry run failed");
   assert(dry.body.externalCallMade === false, "dry run made external call");
   assert(dry.body.execution?.actualCost === 0, "dry run cost must be zero");
+
+  const replay = await request("/api/ai-run", {
+    method: "POST",
+    body: JSON.stringify({ provider: "gemini", jobId: successId, mode: "dry_run" }),
+  });
+  assert(replay.status === 409 && replay.body.status === "BLOCKED", "completed job replay must be blocked");
+  assert(replay.body.externalCallMade === false, "blocked replay made external call");
 
   const failureId = await create("__sim_failure__");
   await request("/api/local-content-jobs", {
