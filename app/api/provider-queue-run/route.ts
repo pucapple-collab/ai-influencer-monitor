@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { blockRemoteMutation } from "../../lib/local-api-guard";
 import { dispatchFactoryTask } from "../../lib/ai/dispatcher";
 import { getProviderWorkQueue, updateProviderWork } from "../../lib/ai/work-queue";
+import { appendProviderAudit } from "../../lib/ai/dispatch-audit";
 
 export async function POST(request: NextRequest) {
   const blocked=blockRemoteMutation(request); if(blocked) return blocked;
@@ -14,13 +15,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ok:false,status:"BLOCKED",externalCallMade:false,paidUsageTriggered:false,error:"Real queue execution requires server switch and explicit confirmation."},{status:409});
     }
     const queue = await getProviderWorkQueue();
-    const planned = queue.filter(item => item.status === "PLANNED").slice(0, limit);
+    for (const stale of queue.filter(item => item.status === "RUNNING" && Date.now()-Date.parse(item.updatedAt)>5*60*1000)) {
+      await updateProviderWork(stale.id,{status:"ERROR",lastError:"Recovered stale RUNNING item after 5 minutes."});
+    }
+    const refreshed = await getProviderWorkQueue();
+    const planned = refreshed.filter(item => item.status === "PLANNED").slice(0, limit);
     const results = [];
     for (const item of planned) {
       const attempts=(item.attempts ?? 0)+1;
       await updateProviderWork(item.id,{status:"RUNNING",attempts});
       const result=await dispatchFactoryTask({task:item.task,prompt:item.prompt,mode,confirmExternalCall:body.confirmExternalCall===true});
       await updateProviderWork(item.id,{status:result.ok?"COMPLETED":result.status==="BLOCKED"?"BLOCKED":"ERROR",lastProvider:result.provider,lastError:result.error,externalCallMade:result.externalCallMade});
+      await appendProviderAudit({workId:item.id,mode,provider:result.provider,status:result.status,externalCallMade:result.externalCallMade,paidUsageTriggered:result.paidUsageTriggered,error:result.error});
       results.push({id:item.id,...result});
       if(mode==="real" && result.externalCallMade) break;
     }
