@@ -15,6 +15,10 @@ function assert(value, message) {
 
 const createdIds = [];
 try {
+  const plan = await request("/api/factory-plan");
+  assert(plan.status === 200 && plan.body.ok, "factory plan failed");
+  assert(plan.body.externalCallMade === false && plan.body.paidUsageTriggered === false, "factory plan must be zero-cost");
+
   const preflight = await request("/api/ai-preflight");
   assert(preflight.status === 200 && preflight.body.ok, "AI preflight failed");
   assert(preflight.body.externalCallMade === false, "preflight must not call providers");
@@ -81,6 +85,19 @@ try {
   const successJob = jobs.body.jobs.find((x) => x.id === successId);
   const failedJob = jobs.body.jobs.find((x) => x.id === failureId);
   assert(successJob?.status === "review", "success job did not reach review");
+
+  const publishDry = await request("/api/publish-gate", {
+    method: "POST",
+    body: JSON.stringify({ jobId: successId }),
+  });
+  assert(publishDry.status === 200 && publishDry.body.status === "PUBLISH_READY", "publish dry-run gate failed");
+  assert(publishDry.body.externalCallMade === false && publishDry.body.actualCost === 0, "publish dry-run must be zero-cost");
+
+  const publishRealBlocked = await request("/api/publish-gate", {
+    method: "POST",
+    body: JSON.stringify({ jobId: successId, mode: "real" }),
+  });
+  assert(publishRealBlocked.status === 409 && publishRealBlocked.body.status === "CONFIRMATION_REQUIRED", "real publish confirmation gate failed");
   assert(failedJob?.status === "ready" && failedJob?.generationError, "failed job did not recover to ready");
 
   const executions = await request("/api/ai-executions");
