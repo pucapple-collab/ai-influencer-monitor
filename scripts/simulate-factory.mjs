@@ -19,6 +19,7 @@ try {
   assert(readiness.status === 200 && readiness.body.ok, "production readiness failed");
   assert(readiness.body.externalCallMade === false && readiness.body.paidUsageTriggered === false, "production readiness must be zero-cost");
   assert(readiness.body.realExecutionEnabled === false, "real execution must stay disabled during validation");
+  assert(readiness.body.realPublishEnabled === false, "real publishing must stay disabled during validation");
 
   const plan = await request("/api/factory-plan");
   assert(plan.status === 200 && plan.body.ok, "factory plan failed");
@@ -28,6 +29,23 @@ try {
   assert(preflight.status === 200 && preflight.body.ok, "AI preflight failed");
   assert(preflight.body.externalCallMade === false, "preflight must not call providers");
   assert(preflight.body.paidUsageTriggered === false, "preflight must not trigger paid usage");
+
+  const realDisabledId = await request("/api/local-content-jobs", {
+    method: "POST",
+    body: JSON.stringify({ title: "__sim_real_disabled__" }),
+  });
+  assert(realDisabledId.status === 200 && realDisabledId.body.job?.id, "real-disabled job creation failed");
+  createdIds.push(realDisabledId.body.job.id);
+  await request("/api/local-content-jobs", {
+    method: "PATCH",
+    body: JSON.stringify({ id: realDisabledId.body.job.id, approval: "approved", status: "ready", prompt: "must-not-call" }),
+  });
+  const realDisabled = await request("/api/ai-run", {
+    method: "POST",
+    body: JSON.stringify({ provider: "gemini", jobId: realDisabledId.body.job.id, mode: "real", confirmExternalCall: true }),
+  });
+  assert(realDisabled.status === 409 && realDisabled.body.status === "REAL_EXECUTION_DISABLED", "server real-execution safety switch failed");
+  assert(realDisabled.body.externalCallMade === false, "disabled real execution made external call");
 
   const unknown = await request("/api/ai-run", {
     method: "POST",
@@ -102,7 +120,8 @@ try {
     method: "POST",
     body: JSON.stringify({ jobId: successId, mode: "real" }),
   });
-  assert(publishRealBlocked.status === 409 && publishRealBlocked.body.status === "CONFIRMATION_REQUIRED", "real publish confirmation gate failed");
+  assert(publishRealBlocked.status === 409 && publishRealBlocked.body.status === "REAL_PUBLISH_DISABLED", "server real-publish safety switch failed");
+  assert(publishRealBlocked.body.externalCallMade === false, "disabled real publishing made external call");
   assert(failedJob?.status === "ready" && failedJob?.generationError, "failed job did not recover to ready");
 
   const executions = await request("/api/ai-executions");
