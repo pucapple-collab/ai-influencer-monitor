@@ -166,6 +166,12 @@ try {
   });
   assert(publishRealBlocked.status === 409 && publishRealBlocked.body.status === "REAL_PUBLISH_DISABLED", "server real-publish safety switch failed");
   assert(publishRealBlocked.body.externalCallMade === false, "disabled real publishing made external call");
+  assert(publishRealBlocked.body.audit?.status === "REAL_PUBLISH_DISABLED", "disabled real publishing must be audited");
+
+  const publishAudit = await request("/api/publish-audit");
+  assert(publishAudit.status === 200 && publishAudit.body.ok, "publish audit fetch failed");
+  assert(publishAudit.body.externalCallMade === false && publishAudit.body.paidUsageTriggered === false, "publish audit endpoint must stay zero-cost");
+  assert(publishAudit.body.records.some((item) => item.jobId === successId && item.status === "REAL_PUBLISH_DISABLED"), "publish safety decision missing from audit trail");
   assert(failedJob?.status === "ready" && failedJob?.generationError, "failed job did not recover to ready");
 
   const executions = await request("/api/ai-executions");
