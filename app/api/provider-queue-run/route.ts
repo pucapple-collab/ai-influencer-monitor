@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { blockRemoteMutation } from "../../lib/local-api-guard";
 import { dispatchFactoryTask } from "../../lib/ai/dispatcher";
 import { getProviderWorkQueue, updateProviderWork } from "../../lib/ai/work-queue";
 
 export async function POST(request: NextRequest) {
+  const blocked=blockRemoteMutation(request); if(blocked) return blocked;
   try {
     const body = await request.json().catch(() => ({}));
     const mode = body.mode === "real" ? "real" : "dry_run";
