@@ -4,11 +4,12 @@ import { getAIProviders } from "../../lib/ai/providers";
 export async function GET() {
   const providers = getAIProviders();
   const connected = providers.filter((provider) => provider.keyConfigured).map((provider) => provider.id);
+  const executable = providers.filter((provider) => provider.keyConfigured && provider.executionImplemented).map((provider) => provider.id);
   const missing = providers.filter((provider) => !provider.keyConfigured).map((provider) => provider.id);
   const realExecutionEnabled = process.env.FACTORY_REAL_EXECUTION_ENABLED === "true";
   const realPublishEnabled = process.env.FACTORY_REAL_PUBLISH_ENABLED === "true";
-  const anyProviderReady = connected.length > 0;
-  const fullFactoryProvidersReady = missing.length === 0;
+  const anyProviderReady = executable.length > 0;
+  const fullFactoryProvidersReady = providers.every((provider) => provider.keyConfigured && provider.executionImplemented);
 
   const milestones = [
     { id: "control-center", label: "Control Center", status: "DONE" },
@@ -27,6 +28,7 @@ export async function GET() {
     paidUsageTriggered: false,
     pipeline: ["idea", "approval", "claude-script", "gemini-visual", "higgsfield-video", "review", "publish"],
     connectedProviders: connected,
+    executableProviders: executable,
     missingProviders: missing,
     anyProviderReady,
     fullFactoryProvidersReady,
@@ -48,7 +50,7 @@ export async function GET() {
     nextAction: !anyProviderReady
       ? "Review provider pricing and spend limits, then configure one server-side credential."
       : !realExecutionEnabled
-        ? "Approve one minimal real-generation test before enabling the server switch."
+        ? "Executable provider detected. Keep REAL locked until one minimal test is explicitly approved."
         : "Run only an explicitly confirmed minimal real-generation test.",
   });
 }
