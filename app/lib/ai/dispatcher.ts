@@ -7,18 +7,27 @@ export type DispatchMode = "dry_run" | "real";
 export type DispatchResult = {
   ok: boolean; task: FactoryTaskKind; provider: AIProviderId; fallbackUsed: boolean;
   executed: boolean; externalCallMade: boolean; paidUsageTriggered: boolean;
-  status: string; output?: string; error?: string;
+  status: string; output?: string; requestId?: string; error?: string;
 };
 
 const inflight = new Map<AIProviderId, number>();
 const limits: Record<AIProviderId, number> = { claude: 2, gemini: 3, higgsfield: 1 };
 
-function enter(provider: AIProviderId) {
-  const n=inflight.get(provider)??0;
-  if(n>=limits[provider]) return false;
-  inflight.set(provider,n+1); return true;
+const waiters = new Map<AIProviderId, Array<() => void>>();
+async function enter(provider: AIProviderId) {
+  while ((inflight.get(provider) ?? 0) >= limits[provider]) {
+    await new Promise<void>((resolve) => {
+      const queue = waiters.get(provider) ?? [];
+      queue.push(resolve);
+      waiters.set(provider, queue);
+    });
+  }
+  inflight.set(provider, (inflight.get(provider) ?? 0) + 1);
 }
-function leave(provider: AIProviderId){ inflight.set(provider,Math.max(0,(inflight.get(provider)??1)-1)); }
+function leave(provider: AIProviderId){
+  inflight.set(provider,Math.max(0,(inflight.get(provider)??1)-1));
+  waiters.get(provider)?.shift()?.();
+}
 
 export async function dispatchFactoryTask(input:{task:FactoryTaskKind;prompt:string;mode?:DispatchMode;confirmExternalCall?:boolean;model?:string}):Promise<DispatchResult>{
   const route=routeFactoryTask(input.task);
@@ -39,11 +48,11 @@ export async function dispatchFactoryTask(input:{task:FactoryTaskKind;prompt:str
     attemptedProvider = provider;
     fallbackUsed = i > 0;
     if(!canExecuteAI(provider)){lastError=`${provider} is not executable.`;continue;}
-    if(!enter(provider)){lastError=`${provider} concurrency limit reached.`;continue;}
+    await enter(provider);
     try{
       const r=await adapters[provider].execute({prompt:input.prompt,model:input.model});
       externalCallMade = externalCallMade || r.executed;
-      if(r.status==="COMPLETED") return {ok:true,task:input.task,provider,fallbackUsed,executed:r.executed,externalCallMade:r.executed,paidUsageTriggered:r.executed,status:r.status,output:r.output};
+      if(r.status==="COMPLETED") return {ok:true,task:input.task,provider,fallbackUsed,executed:r.executed,externalCallMade:r.executed,paidUsageTriggered:r.executed,status:r.status,output:r.output,requestId:r.requestId};
       lastError=r.error??`${provider} failed.`;
       // Never fallback after an ambiguous/queued external submission.
       if(r.executed) break;
