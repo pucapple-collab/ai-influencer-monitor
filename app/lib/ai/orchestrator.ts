@@ -1,4 +1,5 @@
 import { getAIProviders, type AIProviderId } from "./providers";
+import { zoneForTask, type FactoryZoneId } from "./factory-zones";
 
 export type FactoryTaskKind =
   | "architecture"
@@ -14,6 +15,7 @@ export type RouteDecision = {
   fallback?: AIProviderId;
   reason: string;
   executableNow: boolean;
+  zone: FactoryZoneId;
 };
 
 export function routeFactoryTask(task: FactoryTaskKind): RouteDecision {
@@ -43,5 +45,5 @@ export function routeFactoryTask(task: FactoryTaskKind): RouteDecision {
     video: "Higgsfield owns asynchronous video generation and media workflows.",
   };
 
-  return { task, primary, fallback, reason: reasons[task], executableNow: ready.has(primary) };
+  return { task, primary, fallback, reason: reasons[task], executableNow: ready.has(primary), zone: zoneForTask(task) };
 }
