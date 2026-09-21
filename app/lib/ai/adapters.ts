@@ -1,4 +1,5 @@
 
+import { config as configureHiggsfield, higgsfield } from "@higgsfield/client/v2";
 import { getHiggsfieldCredential, getProviderCredential } from "./providers";
 
 export type AIProviderId = "higgsfield" | "gemini" | "claude";
@@ -145,18 +146,58 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
   },
 
   higgsfield: {
-    async execute() {
+    async execute(input) {
       const credentials = getHiggsfieldCredential();
       if (!credentials) return missing("higgsfield");
-
-      return {
-        provider: "higgsfield",
-        executed: false,
-        status: "READY",
-        estimatedCost: 0,
-        error:
-          "Higgsfield connection is configured. Generation is routed through the dedicated async media workflow so request IDs, polling, and cost preflight can be tracked safely.",
-      };
+      const model = input.model || process.env.HIGGSFIELD_MODEL || "bytedance/seedance-2.5/text-to-video";
+      try {
+        configureHiggsfield({ credentials });
+        const result = await higgsfield.subscribe(model, {
+          input: {
+            prompt: input.prompt,
+            duration: 5,
+            resolution: "720p",
+            aspect_ratio: "9:16",
+            output_format: "mp4",
+            generate_audio: true,
+          },
+          withPolling: true,
+        });
+        const payload = result as unknown as Record<string, unknown>;
+        const video = payload.video;
+        const url = typeof video === "string"
+          ? video
+          : video && typeof video === "object" && "url" in video
+            ? String((video as { url?: unknown }).url ?? "")
+            : "";
+        const requestId = String(payload.request_id ?? payload.requestId ?? "");
+        if (!url) {
+          return {
+            provider: "higgsfield",
+            executed: true,
+            status: "ERROR",
+            requestId: requestId || undefined,
+            estimatedCost: 0,
+            error: "Higgsfield completed without a video URL.",
+          };
+        }
+        return {
+          provider: "higgsfield",
+          executed: true,
+          status: "COMPLETED",
+          requestId: requestId || undefined,
+          estimatedCost: 0,
+          output: url,
+        };
+      } catch (error) {
+        return {
+          provider: "higgsfield",
+          executed: true,
+          status: "ERROR",
+          estimatedCost: 0,
+          error: error instanceof Error ? error.message : "Higgsfield generation failed.",
+        };
+      }
     },
   },
 };

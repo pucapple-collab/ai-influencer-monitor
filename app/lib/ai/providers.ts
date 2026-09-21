@@ -26,7 +26,8 @@ const definitions: Array<{
     envNames: ["HF_CREDENTIALS", "HF_API_KEY_ID"],
     // Credentials alone do not make Higgsfield executable.
     // Keep this false until the project owns a verified async submit/poll adapter.
-    executionImplemented: false,
+    defaultModel: "bytedance/seedance-2.5/text-to-video",
+    executionImplemented: true,
   },
   {
     id: "gemini",
