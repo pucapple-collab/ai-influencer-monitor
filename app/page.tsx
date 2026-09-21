@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import ProjectStatusCard from "./components/project-status";
+import LiveControlCenter from "./components/live-control-center";
 import type { MonitorResponse, MonitorSummary } from "./lib/monitor-types";
 
 const setupDescriptions: Record<string, string> = {
@@ -63,11 +64,11 @@ const systemLayers = [
 ];
 
 const nextTasks = [
-  "Connect persistent database",
-  "Create influencer management screen",
-  "Create content management screen",
-  "Connect image generation",
-  "Connect video generation",
+  "Review one AI provider pricing and spending controls",
+  "Connect one server-side provider credential",
+  "Run one explicitly approved minimal real generation",
+  "Review generated output before enabling more providers",
+  "Select a publishing target only after generation validation",
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -500,6 +501,8 @@ export default function Home() {
       <div className="mx-auto max-w-7xl px-6 py-8 lg:px-10">
 
         <ProjectStatusCard />
+
+        <LiveControlCenter />
 
         {/* HEADER */}
         <header className="border-b border-white/10 pb-8">
