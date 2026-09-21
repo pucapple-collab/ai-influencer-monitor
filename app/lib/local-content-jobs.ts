@@ -36,8 +36,7 @@ async function writeUnlocked(data: LocalContentJob[]) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   const temp = `${file}.${process.pid}.${randomUUID()}.tmp`;
   try {
-    await fs.writeFile(temp, JSON.stringify(data, null, 2) + "
-", { mode: 0o600 });
+    await fs.writeFile(temp, JSON.stringify(data, null, 2) + "\\n", { mode: 0o600 });
     await fs.rename(temp, file);
   } finally {
     await fs.rm(temp, { force: true }).catch(() => {});
