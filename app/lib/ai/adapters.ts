@@ -18,6 +18,15 @@ export type AIExecutionResult = {
   error?: string;
 };
 
+const REQUEST_TIMEOUT_MS = 45_000;
+
+async function providerFetch(url: string, init: RequestInit) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try { return await fetch(url, { ...init, signal: controller.signal }); }
+  finally { clearTimeout(timer); }
+}
+
 export interface AIAdapter {
   execute(input: AIExecutionInput): Promise<AIExecutionResult>;
 }
@@ -46,7 +55,7 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
         process.env.GEMINI_MODEL ||
         "gemini-3.8-flash";
 
-      const response = await fetch(
+      const response = await providerFetch(
         "https://generativelanguage.googleapis.com/v1beta/interactions",
         {
           method: "POST",
@@ -88,7 +97,7 @@ export const adapters: Record<AIProviderId, AIAdapter> = {
         process.env.ANTHROPIC_MODEL ||
         "claude-opus-5";
 
-      const response = await fetch(
+      const response = await providerFetch(
         "https://api.anthropic.com/v1/messages",
         {
           method: "POST",
