@@ -101,18 +101,20 @@ export async function POST(request: NextRequest) {
     generationStarted = false;
     return NextResponse.json({ ok: status !== "ERROR", jobId, paidRequired: result.executed, externalCallMade: result.executed, execution: saved, ...result });
   } catch (error) {
+    let recoveredToReady = false;
     if (generationStarted && activeJobId) {
-      await patchContentJob(activeJobId, {
+      const recovered = await patchContentJob(activeJobId, {
         status: "ready",
         generationError: error instanceof Error ? error.message : "AI execution failed.",
       }).catch(() => null);
+      recoveredToReady = Boolean(recovered);
     }
     return NextResponse.json({
       ok: false,
       executed: false,
       externalCallMade: activeMode === "dry_run" ? false : "unknown",
       estimatedCost: 0,
-      recoveredToReady: generationStarted,
+      recoveredToReady,
       error: error instanceof Error ? error.message : "AI execution failed.",
     }, { status: 500 });
   }
