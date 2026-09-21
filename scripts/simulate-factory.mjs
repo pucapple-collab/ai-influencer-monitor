@@ -35,6 +35,7 @@ try {
   assert(widgetStatus.status === 200 && widgetStatus.body.ok, "widget status failed");
   assert(widgetStatus.body.externalCallMade === false && widgetStatus.body.paidUsageTriggered === false, "widget status must stay zero-cost");
   assert(Array.isArray(widgetStatus.body.messages) && widgetStatus.body.messages.length > 0, "widget status messages missing");
+  assert(typeof widgetStatus.body.summary?.recentErrors === "number", "widget recent-error signal missing");
 
   const concurrentCharacters = await Promise.all(
     Array.from({ length: 6 }, (_, index) => request("/api/local-characters", {
