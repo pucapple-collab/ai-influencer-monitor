@@ -14,6 +14,7 @@ function assert(value, message) {
 }
 
 const createdIds = [];
+const createdCharacterIds = [];
 try {
   const widgetStatus = await request("/api/widget-status");
   assert(widgetStatus.status === 200 && widgetStatus.body.ok, "widget status failed");
@@ -29,6 +30,7 @@ try {
   const characterList = await request("/api/local-characters");
   for (const response of concurrentCharacters) {
     assert(response.status === 200 && response.body.character?.id, "concurrent character creation failed");
+    createdCharacterIds.push(response.body.character.id);
     assert(characterList.body.characters.some((item) => item.id === response.body.character.id), "concurrent character mutation was lost");
   }
 
@@ -48,6 +50,9 @@ try {
   const plan = await request("/api/factory-plan");
   assert(plan.status === 200 && plan.body.ok, "factory plan failed");
   assert(plan.body.externalCallMade === false && plan.body.paidUsageTriggered === false, "factory plan must be zero-cost");
+  assert(plan.body.phase === "AWAITING_FIRST_PROVIDER", "CI factory plan must await first provider");
+  assert(plan.body.progress?.total === 7, "factory plan milestones missing");
+  assert(plan.body.realExecutionEnabled === false && plan.body.realPublishEnabled === false, "factory plan safety switches must stay disabled");
 
   const preflight = await request("/api/ai-preflight");
   assert(preflight.status === 200 && preflight.body.ok, "AI preflight failed");
@@ -177,5 +182,8 @@ try {
 } finally {
   for (const id of createdIds) {
     await request("/api/local-content-jobs?id=" + encodeURIComponent(id), { method: "DELETE" }).catch(() => {});
+  }
+  for (const id of createdCharacterIds) {
+    await request("/api/local-characters?id=" + encodeURIComponent(id), { method: "DELETE" }).catch(() => {});
   }
 }
