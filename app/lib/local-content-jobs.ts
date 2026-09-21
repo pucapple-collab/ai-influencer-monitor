@@ -67,6 +67,19 @@ export async function getContentJob(id: string) {
   return (await readContentJobs()).find((job) => job.id === id) ?? null;
 }
 
+export async function deleteContentJobsForCharacter(characterId: string): Promise<number> {
+  return mutateContentJobs((jobs) => {
+    let removed = 0;
+    for (let index = jobs.length - 1; index >= 0; index -= 1) {
+      if (jobs[index].characterId === characterId) {
+        jobs.splice(index, 1);
+        removed += 1;
+      }
+    }
+    return removed;
+  });
+}
+
 export async function patchContentJob(id: string, patch: Partial<LocalContentJob>): Promise<LocalContentJob | null> {
   return mutateContentJobs((jobs) => {
     const index = jobs.findIndex((job) => job.id === id);
