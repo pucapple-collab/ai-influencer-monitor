@@ -12,6 +12,8 @@ export type AIExecutionRecord = {
   actualCost: number;
   createdAt: string;
   completedAt?: string;
+  requestId?: string;
+  idempotencyKey?: string;
   error?: string;
 };
 
