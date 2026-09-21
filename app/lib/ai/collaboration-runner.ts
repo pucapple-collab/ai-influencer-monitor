@@ -12,7 +12,7 @@ async function run(agent:"claude"|"gemini", task:FactoryTaskKind, prompt:string,
   await appendAgentDevelopmentLog({agent,task:workId,status:"STARTED",summary:`Accepted ${task} collaboration assignment.`});
   const result=await dispatchFactoryTask({task,prompt,mode:real?"real":"dry_run",confirmExternalCall});
   const success=result.status==="COMPLETED";
-  await appendProviderAudit({workId,mode:real?"real":"dry_run",provider:result.provider,status:result.status,externalCallMade:result.externalCallMade,paidUsageTriggered:result.paidUsageTriggered,error:success?undefined:safe(result.error||"Unknown provider error",500)});
+  await appendProviderAudit({workId,mode:real?"real":"dry_run",provider:result.provider,status:result.status,externalCallMade:result.externalCallMade,paidUsageTriggered:result.paidUsageTriggered,requestId:result.requestId,error:success?undefined:safe(result.error||"Unknown provider error",500)});
   await appendAgentDevelopmentLog({agent,task:workId,status:success?"SUCCESS":"ERROR",summary:success?`${task} assignment completed.`:`${task} assignment failed.`,error:success?undefined:safe(result.error||"Unknown provider error",500)});
   return result;
 }
