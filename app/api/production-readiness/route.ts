@@ -11,23 +11,28 @@ type Check = {
 export async function GET() {
   const providers = getAIProviders();
   const configured = providers.filter((provider) => provider.keyConfigured);
+  const executable = configured.filter((provider) => provider.executionImplemented);
   const realExecutionEnabled = process.env.FACTORY_REAL_EXECUTION_ENABLED === "true";
   const realPublishEnabled = process.env.FACTORY_REAL_PUBLISH_ENABLED === "true";
 
   const providerChecks: Check[] = providers.map((provider) => ({
     id: `provider:${provider.id}`,
-    status: provider.keyConfigured ? "READY" : "BLOCKED",
+    status: provider.keyConfigured && provider.executionImplemented ? "READY" : "BLOCKED",
     requiredForMinimalRealRun: false,
-    message: provider.keyConfigured ? `${provider.name} credential detected.` : `${provider.name} credential is missing.`,
+    message: !provider.keyConfigured
+      ? `${provider.name} credential is missing.`
+      : provider.executionImplemented
+        ? `${provider.name} credential and real execution adapter are ready.`
+        : `${provider.name} credential detected, but the real execution adapter is not implemented yet.`,
   }));
 
   const checks: Check[] = [
     ...providerChecks,
     {
       id: "at-least-one-provider",
-      status: configured.length > 0 ? "READY" : "BLOCKED",
+      status: executable.length > 0 ? "READY" : "BLOCKED",
       requiredForMinimalRealRun: true,
-      message: configured.length > 0 ? `Minimal test provider ready: ${configured.map((provider) => provider.name).join(", ")}.` : "At least one provider credential is required for a minimal real test.",
+      message: executable.length > 0 ? `Minimal test provider ready: ${executable.map((provider) => provider.name).join(", ")}.` : "At least one provider with credentials and a real execution adapter is required for a minimal real test.",
     },
     {
       id: "generation-confirmation-gate",
@@ -53,6 +58,7 @@ export async function GET() {
     realExecutionEnabled,
     realPublishEnabled,
     configuredProviders: configured.map((provider) => provider.id),
+    executableProviders: executable.map((provider) => provider.id),
     blockers,
     checks,
     nextAction: blockers.length
