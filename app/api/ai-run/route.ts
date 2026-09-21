@@ -62,19 +62,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (process.env.FACTORY_REAL_EXECUTION_ENABLED !== "true") {
+      const saved = await saveExecution({ ...execution, status: "BLOCKED", error: "Real execution safety switch is disabled.", completedAt: new Date().toISOString() });
       await patchContentJob(jobId, { status: "ready" });
       generationStarted = false;
-      return NextResponse.json({ ok: false, executed: false, externalCallMade: false, status: "REAL_EXECUTION_DISABLED", paidRequired: false, jobId, provider, message: "실제 AI 호출은 서버 안전 스위치가 비활성화되어 있습니다." }, { status: 409 });
+      return NextResponse.json({ ok: false, executed: false, externalCallMade: false, status: "REAL_EXECUTION_DISABLED", paidRequired: false, jobId, provider, execution: saved, message: "실제 AI 호출은 서버 안전 스위치가 비활성화되어 있습니다." }, { status: 409 });
     }
 
     if (body.confirmExternalCall !== true) {
+      const saved = await saveExecution({ ...execution, status: "BLOCKED", error: "Explicit external-call confirmation is required.", completedAt: new Date().toISOString() });
       await patchContentJob(jobId, { status: "ready" });
       generationStarted = false;
-      return NextResponse.json({ ok: false, executed: false, externalCallMade: false, status: "CONFIRMATION_REQUIRED", paidRequired: true, jobId, provider, message: "실제 외부 API 호출은 명시적 확인이 필요합니다." }, { status: 409 });
+      return NextResponse.json({ ok: false, executed: false, externalCallMade: false, status: "CONFIRMATION_REQUIRED", paidRequired: true, jobId, provider, execution: saved, message: "실제 외부 API 호출은 명시적 확인이 필요합니다." }, { status: 409 });
     }
 
     if (!canExecuteAI(provider)) {
-      const saved = await saveExecution({ ...execution, status: "BLOCKED", error: "Provider is not connected." });
+      const saved = await saveExecution({ ...execution, status: "BLOCKED", error: "Provider is not connected.", completedAt: new Date().toISOString() });
       await patchContentJob(jobId, { status: "ready" });
       generationStarted = false;
       return NextResponse.json({ ok: false, executed: false, externalCallMade: false, paidRequired: false, status: "NOT_CONNECTED", jobId, provider, estimatedCost: 0, execution: saved, message: "Provider 연결이 없어 외부 API를 호출하지 않았습니다." }, { status: 409 });
