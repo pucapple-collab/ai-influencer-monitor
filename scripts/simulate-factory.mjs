@@ -50,6 +50,14 @@ try {
   });
   assert(ready.status === 200, "job ready transition failed");
 
+  const factory = await request("/api/factory-dry-run", {
+    method: "POST",
+    body: JSON.stringify({ jobId: successId }),
+  });
+  assert(factory.status === 200 && factory.body.mode === "DRY_RUN", "factory orchestration dry-run failed");
+  assert(factory.body.stages?.length === 3, "factory orchestration must contain 3 stages");
+  assert(factory.body.externalCallMade === false && factory.body.actualCost === 0, "factory orchestration must be zero-cost");
+
   const dry = await request("/api/ai-run", {
     method: "POST",
     body: JSON.stringify({ provider: "gemini", jobId: successId, mode: "dry_run" }),

@@ -20,24 +20,24 @@ export type LocalContentJob = {
 export async function readContentJobs(): Promise<LocalContentJob[]> {
   try {
     return JSON.parse(await fs.readFile(file, "utf8"));
-  } catch {
-    return [];
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
   }
 }
 
 export async function writeContentJobs(data: LocalContentJob[]) {
   await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file, JSON.stringify(data, null, 2) + "\n", { mode: 0o600 });
+  const temp = file + ".tmp";
+  await fs.writeFile(temp, JSON.stringify(data, null, 2) + "\n", { mode: 0o600 });
+  await fs.rename(temp, file);
 }
 
 export async function getContentJob(id: string) {
   return (await readContentJobs()).find((job) => job.id === id) ?? null;
 }
 
-export async function patchContentJob(
-  id: string,
-  patch: Partial<LocalContentJob>
-): Promise<LocalContentJob | null> {
+export async function patchContentJob(id: string, patch: Partial<LocalContentJob>): Promise<LocalContentJob | null> {
   const jobs = await readContentJobs();
   const index = jobs.findIndex((job) => job.id === id);
   if (index < 0) return null;
