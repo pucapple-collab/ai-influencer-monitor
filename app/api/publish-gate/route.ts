@@ -27,6 +27,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (process.env.FACTORY_REAL_PUBLISH_ENABLED !== "true") {
+      return NextResponse.json({
+        ok: false,
+        jobId,
+        status: "REAL_PUBLISH_DISABLED",
+        externalCallMade: false,
+        message: "Real publishing is disabled by the server safety switch.",
+      }, { status: 409 });
+    }
+
     if (body.confirmExternalPublish !== true) {
       return NextResponse.json({
         ok: false,
