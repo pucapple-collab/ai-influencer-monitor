@@ -24,9 +24,7 @@ const definitions: Array<{
     name: "Higgsfield",
     role: "video",
     envNames: ["HF_CREDENTIALS", "HF_API_KEY_ID"],
-    // Credentials alone do not make Higgsfield executable.
-    // Keep this false until the project owns a verified async submit/poll adapter.
-    executionImplemented: false,
+    executionImplemented: true,
   },
   {
     id: "gemini",
