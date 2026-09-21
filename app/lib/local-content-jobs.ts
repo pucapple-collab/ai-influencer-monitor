@@ -16,7 +16,12 @@ export type LocalContentJob = {
   prompt?: string;
   approval?: string;
   generationResult?: string;
-  generationError?: string;\n  reviewDecision?: "pending" | "approved" | "rejected";\n  reviewNote?: string;\n  reviewedAt?: string;\n  publishedAt?: string;\n};
+  generationError?: string;
+  reviewDecision?: "pending" | "approved" | "rejected";
+  reviewNote?: string;
+  reviewedAt?: string;
+  publishedAt?: string;
+};
 
 async function readUnlocked(): Promise<LocalContentJob[]> {
   try {
@@ -31,7 +36,8 @@ async function writeUnlocked(data: LocalContentJob[]) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   const temp = `${file}.${process.pid}.${randomUUID()}.tmp`;
   try {
-    await fs.writeFile(temp, JSON.stringify(data, null, 2) + "\n", { mode: 0o600 });
+    await fs.writeFile(temp, JSON.stringify(data, null, 2) + "
+", { mode: 0o600 });
     await fs.rename(temp, file);
   } finally {
     await fs.rm(temp, { force: true }).catch(() => {});
